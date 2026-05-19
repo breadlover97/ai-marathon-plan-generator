@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MarathonPlanIntake",
+  "type": "object",
+  "required": [
+    "athlete_name",
+    "race_name",
+    "start_date",
+    "race_date",
+    "current_weekly_km",
+    "longest_recent_run_km",
+    "runs_per_week",
+    "running_ability",
+    "training_volume",
+    "difficulty"
+  ],
+  "properties": {
+    "athlete_name": { "type": "string" },
+    "race_name": { "type": "string" },
+    "start_date": { "type": "string", "format": "date" },
+    "race_date": { "type": "string", "format": "date" },
+    "goal_time": { "type": ["string", "null"], "description": "HH:MM:SS or null" },
+    "goal_description": { "type": "string" },
+    "current_weekly_km": { "type": "number", "minimum": 0 },
+    "longest_recent_run_km": { "type": "number", "minimum": 0 },
+    "current_marathon_pace": { "type": ["string", "null"], "description": "MM:SS per km or null" },
+    "runs_per_week": { "type": "integer", "minimum": 3, "maximum": 7 },
+    "running_ability": {
+      "type": "string",
+      "enum": ["beginner", "intermediate", "advanced", "elite", "elite_plus"]
+    },
+    "training_volume": {
+      "type": "string",
+      "enum": ["gradual", "steady", "progressive"]
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["comfortable", "balanced", "challenging"]
+    },
+    "workout_day": { "type": "string" },
+    "medium_long_day": { "type": "string" },
+    "long_run_day": { "type": "string" },
+    "strength_days": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rest_days": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "max_long_run_km": { "type": ["number", "null"] },
+    "primary_risks": { "type": "string" },
+    "race_specifics": { "type": "string" },
+    "fuel_notes": { "type": "string" },
+    "admin_notes": { "type": "string" },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
+

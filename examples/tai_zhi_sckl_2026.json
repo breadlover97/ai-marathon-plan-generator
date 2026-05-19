@@ -1,0 +1,31 @@
+{
+  "athlete_name": "Tai Zhi",
+  "race_name": "Standard Chartered Kuala Lumpur Marathon 2026",
+  "start_date": "2026-05-11",
+  "race_date": "2026-10-04",
+  "goal_time": "02:50:00",
+  "goal_description": "2h 50m / Top 8 Open",
+  "current_weekly_km": 52,
+  "longest_recent_run_km": 21,
+  "current_marathon_pace": "04:15",
+  "runs_per_week": 5,
+  "running_ability": "advanced",
+  "training_volume": "progressive",
+  "difficulty": "challenging",
+  "workout_day": "Monday",
+  "medium_long_day": "Wednesday",
+  "long_run_day": "Saturday",
+  "strength_days": ["Thursday"],
+  "rest_days": ["Sunday"],
+  "max_long_run_km": 34,
+  "primary_risks": "Injury and burnout",
+  "race_specifics": "Heat/humidity + very early start",
+  "fuel_notes": "Amino Vital AminoShot; refine carb/hr",
+  "admin_notes": "REPC 1-3 Oct at MITEC",
+  "constraints": [
+    "Protect shins and calves",
+    "Keep hard workouts controlled in tropical conditions",
+    "Prioritize sleep during work-heavy weeks"
+  ]
+}
+
