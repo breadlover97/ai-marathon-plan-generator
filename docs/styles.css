@@ -442,6 +442,138 @@ legend {
   gap: 16px;
 }
 
+.chart-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 18px;
+  margin-bottom: 24px;
+}
+
+.chart-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.chart-heading h3 {
+  margin: 0;
+}
+
+.chart-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.chart-shell {
+  width: 100%;
+  min-height: 300px;
+}
+
+.chart-shell svg {
+  display: block;
+  width: 100%;
+  height: 300px;
+  overflow: visible;
+}
+
+.chart-phase-band {
+  opacity: 0.45;
+}
+
+.chart-phase-band.base-build {
+  fill: #eef6ff;
+}
+
+.chart-phase-band.marathon-build {
+  fill: #f4f7fb;
+}
+
+.chart-phase-band.race-specific {
+  fill: #fff7e8;
+}
+
+.chart-phase-band.taper {
+  fill: #f2eefc;
+}
+
+.chart-axis {
+  stroke: #9aa6b2;
+  stroke-width: 1.1;
+}
+
+.chart-grid {
+  stroke: #d6dce5;
+  stroke-dasharray: 4 6;
+  stroke-width: 1;
+}
+
+.chart-bar {
+  fill: var(--brand);
+  opacity: 0.22;
+  rx: 5;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.chart-dot {
+  fill: var(--accent);
+  stroke: white;
+  stroke-width: 3;
+}
+
+.chart-label {
+  fill: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 16px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-bar,
+.legend-line {
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.legend-bar {
+  width: 18px;
+  height: 10px;
+  border-radius: 3px;
+  background: rgba(37, 64, 102, 0.22);
+}
+
+.legend-line {
+  width: 22px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
 .transfer-box {
   width: 100%;
   min-height: 150px;

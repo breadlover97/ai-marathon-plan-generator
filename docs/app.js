@@ -9,6 +9,7 @@ const form = document.querySelector("#intake-form");
 const output = document.querySelector("#plan-output");
 const summary = document.querySelector("#plan-summary");
 const planTable = document.querySelector("#plan-table");
+const mileageChart = document.querySelector("#mileage-chart");
 const statusBox = document.querySelector("#status-box");
 const transferBox = document.querySelector("#sheets-transfer");
 
@@ -131,6 +132,7 @@ function handleSubmit(event) {
 
   setStatus(plan.validation.warnings.length ? plan.validation.warnings.join(" ") : "Plan generated.", plan.validation.warnings.length ? "warning" : "success");
   renderSummary(plan);
+  renderMileageChart(plan);
   renderPlan(plan);
   transferBox.hidden = true;
   transferBox.value = "";
@@ -348,6 +350,106 @@ function renderPlan(plan) {
       `
     )
     .join("");
+}
+
+function renderMileageChart(plan) {
+  const weeks = plan.weeks;
+  if (!weeks.length) {
+    mileageChart.innerHTML = "";
+    return;
+  }
+
+  const width = 920;
+  const height = 300;
+  const margin = { top: 28, right: 28, bottom: 42, left: 54 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const baseline = height - margin.bottom;
+  const weeklyValues = weeks.map((week) => Number(week.targetKm || 0));
+  const longRunValues = weeks.map((week) => longRunKm(week));
+  const maxValue = niceChartMax(Math.max(...weeklyValues, ...longRunValues, 10));
+  const step = plotWidth / weeks.length;
+  const barWidth = Math.max(10, step * 0.56);
+
+  const phaseBands = phaseRanges(weeks)
+    .map((range) => {
+      const x = margin.left + range.start * step;
+      const w = (range.end - range.start + 1) * step;
+      return `<rect class="chart-phase-band ${phaseClass(range.phase)}" x="${x.toFixed(1)}" y="${margin.top}" width="${w.toFixed(1)}" height="${plotHeight}"></rect>`;
+    })
+    .join("");
+
+  const bars = weeks
+    .map((week, index) => {
+      const value = weeklyValues[index];
+      const barHeight = (value / maxValue) * plotHeight;
+      const x = margin.left + index * step + (step - barWidth) / 2;
+      const y = baseline - barHeight;
+      const label = index % Math.ceil(weeks.length / 8) === 0 || index === weeks.length - 1 ? `<text class="chart-label" x="${(x + barWidth / 2).toFixed(1)}" y="${height - 15}" text-anchor="middle">W${week.weekNumber}</text>` : "";
+      return `
+        <g>
+          <rect class="chart-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}">
+            <title>Week ${week.weekNumber}: ${value} km total</title>
+          </rect>
+          ${label}
+        </g>
+      `;
+    })
+    .join("");
+
+  const longRunPoints = weeks.map((week, index) => {
+    const value = longRunValues[index];
+    const x = margin.left + index * step + step / 2;
+    const y = baseline - (value / maxValue) * plotHeight;
+    return { x, y, value, week };
+  });
+  const longRunPath = longRunPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+  const longRunDots = longRunPoints
+    .filter((_, index) => index % Math.ceil(weeks.length / 7) === 0 || index === weeks.length - 1)
+    .map((point) => `<circle class="chart-dot" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="4"><title>Week ${point.week.weekNumber}: ${point.value} km long run</title></circle>`)
+    .join("");
+
+  mileageChart.innerHTML = `
+    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Weekly planned mileage chart">
+      ${phaseBands}
+      <line class="chart-grid" x1="${margin.left}" y1="${margin.top}" x2="${width - margin.right}" y2="${margin.top}"></line>
+      <line class="chart-grid" x1="${margin.left}" y1="${margin.top + plotHeight / 2}" x2="${width - margin.right}" y2="${margin.top + plotHeight / 2}"></line>
+      <line class="chart-axis" x1="${margin.left}" y1="${baseline}" x2="${width - margin.right}" y2="${baseline}"></line>
+      <line class="chart-axis" x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${baseline}"></line>
+      <text class="chart-label" x="6" y="${margin.top + 4}">${maxValue} km</text>
+      <text class="chart-label" x="6" y="${margin.top + plotHeight / 2 + 4}">${Math.round(maxValue / 2)} km</text>
+      ${bars}
+      <path class="chart-line" d="${longRunPath}"></path>
+      ${longRunDots}
+    </svg>
+  `;
+}
+
+function longRunKm(week) {
+  const longRun = week.sessions.find((session) => session.sessionType === "Long Run" || session.sessionType === "Race");
+  return Number(longRun?.plannedKm || 0);
+}
+
+function niceChartMax(value) {
+  if (value <= 50) return Math.ceil(value / 10) * 10;
+  return Math.ceil(value / 20) * 20;
+}
+
+function phaseRanges(weeks) {
+  const ranges = [];
+  for (const week of weeks) {
+    const last = ranges[ranges.length - 1];
+    if (last && last.phase === week.phase) {
+      last.end = week.weekNumber - 1;
+    } else {
+      ranges.push({ phase: week.phase, start: week.weekNumber - 1, end: week.weekNumber - 1 });
+    }
+  }
+  return ranges;
+}
+
+function phaseClass(phase) {
+  return phase.toLowerCase().replaceAll(" ", "-");
 }
 
 async function copyForSheets() {
