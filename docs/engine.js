@@ -396,31 +396,97 @@
   }
 
   function planToTsv(plan) {
-    const rows = [
-      ["Week", "Date Range", "Phase", "Day", "Type", "Plan", "Planned km", "Week Total"],
-    ];
-    for (const week of plan.weeks) {
-      for (const session of week.sessions) {
-        rows.push([
-          week.weekNumber,
-          week.dateRange,
-          week.phase,
-          session.day,
-          session.sessionType,
-          session.plan,
-          session.plannedKm,
-          week.targetKm,
-        ]);
-      }
-    }
-    return rows.map((row) => row.map((cell) => String(cell ?? "").replaceAll("\t", " ").replaceAll("\n", " ")).join("\t")).join("\n");
+    return planToSheetRows(plan).map((row) => row.map(cleanTsvCell).join("\t")).join("\n");
   }
 
   function planToCsv(plan) {
-    return planToTsv(plan)
-      .split("\n")
-      .map((row) => row.split("\t").map((cell) => `"${cell.replaceAll('"', '""')}"`).join(","))
-      .join("\n");
+    return planToSheetRows(plan).map((row) => row.map(cleanCsvCell).join(",")).join("\n");
+  }
+
+  function planToSheetRows(plan) {
+    const profile = plan.profile;
+    const rows = [
+      ["", "Marathon Training Plan", "", "", "", "", "", "", "", "", "", "Race", profile.raceName || "", "", "", ""],
+      ["", "Start", profile.startDate || "", "", "Race Day", profile.raceDate || "", "", "Goal", profile.goalDescription || profile.goalTime || "", "", "", "", "", "", "", ""],
+      [
+        "",
+        "Current baseline",
+        `${profile.currentWeeklyKm || ""} km/week; ${profile.longestRecentRunKm || ""} km long run`,
+        "",
+        "Goal pace",
+        plan.goalPacePerKm || "Not set",
+        "",
+        "Current MP",
+        profile.currentMarathonPace || "Not set",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ],
+      [
+        "",
+        "Default week shape",
+        `${profile.workoutDay || "Workout"} workout, ${profile.mediumLongDay || "medium-long"} medium-long, ${profile.longRunDay || "long run"} long run`,
+        "",
+        "Race specifics",
+        profile.raceSpecifics || "",
+        "",
+        "Admin",
+        profile.adminNotes || "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+      ],
+      ["", "Use", "Enter actual run notes in the Actual, Distance, and Remarks rows. Planned totals calculate from day columns.", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+      [],
+      ["", "Plan KPI", "Formula", "", "Value", "", "Notes"],
+      ["", "Training weeks", "", "", plan.weeks.length, "", `${profile.startDate || ""} to ${profile.raceDate || ""}`],
+      ["", "Peak planned week", "", "", plan.summary ? plan.summary.peakKm : "", "", "Based on weekly planned distance totals"],
+      [],
+    ];
+
+    for (const week of plan.weeks) {
+      const startRow = rows.length + 1;
+      const plannedDistanceRow = startRow + 4;
+      const actualDistanceRow = startRow + 6;
+
+      rows.push(["", `Week ${week.weekNumber}`, ...week.sessions.map((session) => sessionDateLabel(week.startDate, session.day)), "", "", "", "", "", ""]);
+      rows.push(["", week.weekNumber, ...week.sessions.map((session) => `${shortDay(session.day)} ${sessionDateLabel(week.startDate, session.day)}`), "Total", "", "Phase", week.phase, "Target km", week.targetKm]);
+      rows.push(["", "Type", ...week.sessions.map((session) => session.sessionType), "", "", "Key sessions", week.keySessions, "Long run", week.longRunSummary]);
+      rows.push(["", "Plan", ...week.sessions.map((session) => session.plan), "", "", "Date range", week.dateRange, "Admin", profile.adminNotes || ""]);
+      rows.push(["", "Distance (km)", ...week.sessions.map((session) => session.plannedKm), `=SUM(C${plannedDistanceRow}:I${plannedDistanceRow})`, "", "", "", "", ""]);
+      rows.push(["", "Actual", ...week.sessions.map(() => ""), "", "", "", "", "", ""]);
+      rows.push(["", "Distance (km)", ...week.sessions.map(() => ""), `=SUM(C${actualDistanceRow}:I${actualDistanceRow})`, "", "", "", "", "", ""]);
+      rows.push(["", "Remarks", ...week.sessions.map(() => ""), "", "", "", "", "", ""]);
+      rows.push([]);
+      rows.push([]);
+    }
+
+    return rows;
+  }
+
+  function sessionDateLabel(weekStartDate, day) {
+    const offset = WEEKDAYS.indexOf(day);
+    return formatShortDate(addDays(parseDate(weekStartDate), offset));
+  }
+
+  function shortDay(day) {
+    return day.slice(0, 3);
+  }
+
+  function cleanTsvCell(cell) {
+    return String(cell ?? "").replaceAll("\t", " ").replaceAll("\n", " ");
+  }
+
+  function cleanCsvCell(cell) {
+    return `"${cleanTsvCell(cell).replaceAll('"', '""')}"`;
   }
 
   return {
