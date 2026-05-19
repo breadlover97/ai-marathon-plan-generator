@@ -1,17 +1,18 @@
 :root {
-  --ink: #16221f;
-  --muted: #64746f;
-  --line: #d8e0dc;
+  --ink: #111111;
+  --muted: #636a64;
+  --line: #dfe8d8;
   --panel: #ffffff;
-  --panel-soft: #f5f8f6;
-  --brand: #1f4e46;
-  --brand-dark: #163a34;
-  --accent: #c77d3f;
-  --blue: #33658a;
-  --warning: #8a5b16;
-  --danger: #9d2f2f;
-  --success: #1f6f4a;
-  --shadow: 0 18px 55px rgba(22, 34, 31, 0.1);
+  --panel-soft: #f7fbe9;
+  --brand: #111111;
+  --brand-dark: #000000;
+  --accent: #c9ff35;
+  --accent-strong: #9ee400;
+  --blue: #2f72ff;
+  --warning: #805300;
+  --danger: #a62b2b;
+  --success: #087a4b;
+  --shadow: 0 18px 55px rgba(17, 17, 17, 0.1);
 }
 
 * {
@@ -21,7 +22,7 @@
 body {
   margin: 0;
   color: var(--ink);
-  background: #eef3f0;
+  background: #f2f6e9;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -47,13 +48,21 @@ button:hover {
   background: var(--brand-dark);
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(201, 255, 53, 0.75);
+  outline-offset: 2px;
+}
+
 button.secondary {
-  background: #e7efeb;
-  color: var(--brand);
+  background: #eef5db;
+  color: var(--ink);
 }
 
 button.secondary:hover {
-  background: #d9e6e0;
+  background: #e2f0bf;
 }
 
 .app-shell {
@@ -70,7 +79,7 @@ button.secondary:hover {
   flex-direction: column;
   gap: 24px;
   padding: 28px 22px;
-  background: var(--brand);
+  background: #101010;
   color: white;
 }
 
@@ -87,8 +96,8 @@ button.secondary:hover {
   width: 52px;
   height: 52px;
   border-radius: 8px;
-  background: white;
-  color: var(--brand);
+  background: var(--accent);
+  color: var(--ink);
   font-weight: 900;
 }
 
@@ -101,7 +110,7 @@ button.secondary:hover {
 
 .brand p {
   margin: 6px 0 0;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.9rem;
   line-height: 1.35;
 }
@@ -114,37 +123,37 @@ button.secondary:hover {
 .step-nav button {
   justify-content: flex-start;
   width: 100%;
-  background: rgba(255, 255, 255, 0.1);
+  background: #242424;
   color: white;
   text-align: left;
 }
 
 .step-nav button.is-active,
 .step-nav button:hover {
-  background: white;
-  color: var(--brand);
+  background: var(--accent);
+  color: var(--ink);
 }
 
 .status {
   margin-top: auto;
   border-radius: 8px;
   padding: 14px;
-  background: rgba(255, 255, 255, 0.12);
+  background: #242424;
   line-height: 1.4;
 }
 
 .status[data-type="error"] {
-  background: #fff0f0;
+  background: #ffe8e8;
   color: var(--danger);
 }
 
 .status[data-type="warning"] {
-  background: #fff6df;
+  background: #fff3c2;
   color: var(--warning);
 }
 
 .status[data-type="success"] {
-  background: #eaf7f0;
+  background: #e5fbc9;
   color: var(--success);
 }
 
@@ -178,7 +187,7 @@ button.secondary:hover {
 .step-heading span,
 .eyebrow {
   display: block;
-  color: var(--accent);
+  color: #5a7f00;
   font-size: 0.78rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -237,8 +246,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 3px solid rgba(51, 101, 138, 0.16);
-  border-color: var(--blue);
+  outline: 3px solid rgba(201, 255, 53, 0.4);
+  border-color: var(--accent-strong);
 }
 
 fieldset {
@@ -272,6 +281,7 @@ legend {
 
 .day-grid input {
   width: auto;
+  accent-color: var(--accent-strong);
 }
 
 .actions,
@@ -342,9 +352,9 @@ legend {
   width: 100%;
   min-height: 150px;
   margin: 0 0 24px;
-  border: 1px solid var(--blue);
+  border: 1px solid var(--accent-strong);
   border-radius: 8px;
-  background: #f7fbfd;
+  background: #fbffed;
   color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.82rem;
@@ -368,7 +378,7 @@ legend {
 }
 
 .week-header .eyebrow {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--accent);
 }
 
 .week-header strong {
@@ -404,7 +414,7 @@ legend {
 .session b {
   display: block;
   margin-top: 10px;
-  color: var(--brand);
+  color: #4f7600;
 }
 
 .session p {
