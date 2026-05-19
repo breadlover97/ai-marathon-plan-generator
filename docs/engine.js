@@ -460,7 +460,7 @@
       rows.push(["", `Week ${week.weekNumber}`, ...week.sessions.map((session) => sessionDateLabel(week.startDate, session.day)), "", "", "", "", "", ""]);
       rows.push(["", week.weekNumber, ...week.sessions.map((session) => `${shortDay(session.day)} ${sessionDateLabel(week.startDate, session.day)}`), "Total", "", "Phase", week.phase, "Target km", week.targetKm]);
       rows.push(["", "Type", ...week.sessions.map((session) => session.sessionType), "", "", "Key sessions", week.keySessions, "Long run", week.longRunSummary]);
-      rows.push(["", "Plan", ...week.sessions.map((session) => session.plan), "", "", "Date range", week.dateRange, "Admin", profile.adminNotes || ""]);
+      rows.push(["", "Plan", ...week.sessions.map((session) => session.plan), "", "", "Date range", week.dateRange, "", ""]);
       rows.push(["", "Distance (km)", ...week.sessions.map((session) => session.plannedKm), `=SUM(C${plannedDistanceRow}:I${plannedDistanceRow})`, "", "", "", "", ""]);
       rows.push(["", "Actual", ...week.sessions.map(() => ""), "", "", "", "", "", ""]);
       rows.push(["", "Distance (km)", ...week.sessions.map(() => ""), `=SUM(C${actualDistanceRow}:I${actualDistanceRow})`, "", "", "", "", "", ""]);

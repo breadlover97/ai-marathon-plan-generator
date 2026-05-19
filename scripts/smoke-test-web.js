@@ -44,6 +44,7 @@ assert.ok(tsv.includes("\tRemarks\t"));
 assert.ok(tsv.includes("=SUM(C15:I15)"));
 assert.ok(engine.planToCsv(plan).includes('"","Marathon Training Plan"'));
 assert.ok(!/\b(Focus|Fuel|Risk|Adjust)\b/.test(tsv));
+assert.equal((tsv.match(/\bAdmin\b/g) || []).length, 1);
 
 const invalid = engine.buildTrainingPlan({ ...profile, raceName: "", currentWeeklyKm: 0 });
 assert.ok(invalid.validation.errors.length >= 2);
