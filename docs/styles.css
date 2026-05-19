@@ -531,6 +531,86 @@ legend {
   stroke-width: 3;
 }
 
+.chart-hit-area {
+  fill: white;
+  opacity: 0;
+  pointer-events: all;
+  cursor: crosshair;
+}
+
+.chart-hover {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.chart-crosshair {
+  stroke: rgba(37, 64, 102, 0.45);
+  stroke-dasharray: 4 5;
+  stroke-width: 1.1;
+}
+
+.chart-crosshair-horizontal {
+  opacity: 0.42;
+}
+
+.chart-hover-dot {
+  fill: var(--brand);
+  stroke: white;
+  stroke-width: 3;
+}
+
+.chart-tooltip-bg {
+  fill: #ffffff;
+  stroke: #d3dae6;
+  stroke-width: 1.1;
+  filter: drop-shadow(0 12px 24px rgba(24, 33, 47, 0.16));
+}
+
+.chart-tooltip text {
+  font-size: 0.68rem;
+  font-weight: 800;
+  dominant-baseline: middle;
+}
+
+.chart-tooltip-title {
+  fill: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.chart-tooltip-date,
+.chart-tooltip-label {
+  fill: var(--muted);
+}
+
+.chart-tooltip-divider {
+  stroke: #e3e8f0;
+  stroke-width: 1;
+}
+
+.chart-tooltip-phase {
+  fill: #946200;
+}
+
+.chart-tooltip-total {
+  fill: var(--brand);
+  font-weight: 900;
+}
+
+.chart-tooltip-long-run {
+  fill: var(--accent);
+  font-weight: 900;
+}
+
+.tooltip-marker.total {
+  fill: rgba(37, 64, 102, 0.42);
+}
+
+.tooltip-marker.long-run {
+  fill: var(--accent);
+}
+
 .chart-label {
   fill: var(--muted);
   font-size: 0.72rem;

@@ -42,6 +42,12 @@ const defaults = {
   injuryNotes: "Previous shin/calf sensitivity",
 };
 
+const chartTooltipSize = {
+  width: 172,
+  height: 122,
+  gap: 12,
+};
+
 const stepRequirements = [
   ["raceName", "startDate", "raceDate"],
   ["currentWeeklyKm", "longestRecentRunKm", "runsPerWeek", "runningAbility"],
@@ -408,6 +414,14 @@ function renderMileageChart(plan) {
     .filter((_, index) => index % Math.ceil(weeks.length / 7) === 0 || index === weeks.length - 1)
     .map((point) => `<circle class="chart-dot" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="4"><title>Week ${point.week.weekNumber}: ${point.value} km long run</title></circle>`)
     .join("");
+  const hoverPoints = longRunPoints.map((point, index) => ({
+    ...point,
+    label: `Week ${point.week.weekNumber}`,
+    dateRange: point.week.dateRange,
+    phase: point.week.phase,
+    totalKm: weeklyValues[index],
+    longRunKm: point.value,
+  }));
 
   mileageChart.innerHTML = `
     <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Weekly planned mileage chart">
@@ -421,8 +435,110 @@ function renderMileageChart(plan) {
       ${bars}
       <path class="chart-line" d="${longRunPath}"></path>
       ${longRunDots}
+      ${chartHoverMarkup(margin.left, margin.top, plotWidth, plotHeight, baseline)}
     </svg>
   `;
+  setupMileageChartHover(mileageChart, hoverPoints, {
+    width,
+    height,
+    left: margin.left,
+    right: margin.right,
+    top: margin.top,
+    baseline,
+    plotWidth,
+    plotHeight,
+  });
+}
+
+function chartHoverMarkup(left, top, plotWidth, plotHeight, baseline) {
+  return `
+    <g class="chart-hover" data-hover>
+      <line class="chart-crosshair" data-hover-v x1="${left}" y1="${top}" x2="${left}" y2="${baseline}"></line>
+      <line class="chart-crosshair chart-crosshair-horizontal" data-hover-h x1="${left}" y1="${top}" x2="${left + plotWidth}" y2="${top}"></line>
+      <circle class="chart-hover-dot" data-hover-dot cx="${left}" cy="${top}" r="5"></circle>
+      <g class="chart-tooltip" data-hover-tip>
+        <rect class="chart-tooltip-bg" width="${chartTooltipSize.width}" height="${chartTooltipSize.height}" rx="10"></rect>
+        <text class="chart-tooltip-title" data-hover-week x="14" y="20"></text>
+        <text class="chart-tooltip-date" data-hover-date x="14" y="38"></text>
+        <line class="chart-tooltip-divider" x1="14" y1="52" x2="${chartTooltipSize.width - 14}" y2="52"></line>
+        <text class="chart-tooltip-label" x="14" y="70">Phase</text>
+        <text class="chart-tooltip-phase" data-hover-phase x="${chartTooltipSize.width - 14}" y="70" text-anchor="end"></text>
+        <circle class="tooltip-marker total" cx="18" cy="91" r="4"></circle>
+        <text class="chart-tooltip-label" x="32" y="91">Mileage</text>
+        <text class="chart-tooltip-total" data-hover-total x="${chartTooltipSize.width - 14}" y="91" text-anchor="end"></text>
+        <circle class="tooltip-marker long-run" cx="18" cy="109" r="4"></circle>
+        <text class="chart-tooltip-label" x="32" y="109">Long run</text>
+        <text class="chart-tooltip-long-run" data-hover-long-run x="${chartTooltipSize.width - 14}" y="109" text-anchor="end"></text>
+      </g>
+    </g>
+    <rect class="chart-hit-area" x="${left}" y="${top}" width="${plotWidth}" height="${plotHeight}"></rect>
+  `;
+}
+
+function setupMileageChartHover(container, points, dims) {
+  const svg = container.querySelector("svg");
+  const hitArea = container.querySelector(".chart-hit-area");
+  const hover = container.querySelector("[data-hover]");
+  if (!svg || !hitArea || !hover || !points.length) return;
+
+  const vLine = container.querySelector("[data-hover-v]");
+  const hLine = container.querySelector("[data-hover-h]");
+  const dot = container.querySelector("[data-hover-dot]");
+  const tip = container.querySelector("[data-hover-tip]");
+  const weekText = container.querySelector("[data-hover-week]");
+  const dateText = container.querySelector("[data-hover-date]");
+  const phaseText = container.querySelector("[data-hover-phase]");
+  const totalText = container.querySelector("[data-hover-total]");
+  const longRunText = container.querySelector("[data-hover-long-run]");
+
+  const nearestPoint = (x) => points.reduce((best, point) => {
+    return Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best;
+  }, points[0]);
+
+  const moveCrosshair = (event) => {
+    const screenMatrix = svg.getScreenCTM();
+    if (!screenMatrix) return;
+    const svgPoint = svg.createSVGPoint();
+    svgPoint.x = event.clientX;
+    svgPoint.y = event.clientY;
+    const transformed = svgPoint.matrixTransform(screenMatrix.inverse());
+    const x = Math.min(Math.max(transformed.x, dims.left), dims.left + dims.plotWidth);
+    const point = nearestPoint(x);
+    const preferredTooltipX = x > dims.width - dims.right - chartTooltipSize.width - chartTooltipSize.gap
+      ? x - chartTooltipSize.width - chartTooltipSize.gap
+      : x + chartTooltipSize.gap;
+    const tooltipX = Math.max(4, Math.min(preferredTooltipX, dims.width - chartTooltipSize.width - 4));
+    const tooltipY = Math.max(
+      dims.top + 4,
+      Math.min(point.y - chartTooltipSize.height - 10, dims.baseline - chartTooltipSize.height - 8)
+    );
+
+    hover.style.opacity = "1";
+    vLine.setAttribute("x1", point.x);
+    vLine.setAttribute("x2", point.x);
+    hLine.setAttribute("y1", point.y);
+    hLine.setAttribute("y2", point.y);
+    hLine.setAttribute("x1", dims.left);
+    hLine.setAttribute("x2", dims.left + dims.plotWidth);
+    dot.setAttribute("cx", point.x);
+    dot.setAttribute("cy", point.y);
+    tip.setAttribute("transform", `translate(${tooltipX}, ${tooltipY})`);
+    weekText.textContent = point.label;
+    dateText.textContent = point.dateRange;
+    phaseText.textContent = point.phase;
+    totalText.textContent = formatKm(point.totalKm);
+    longRunText.textContent = formatKm(point.longRunKm);
+  };
+
+  hitArea.addEventListener("pointerenter", moveCrosshair);
+  hitArea.addEventListener("pointermove", moveCrosshair);
+  hitArea.addEventListener("pointerleave", () => {
+    hover.style.opacity = "0";
+  });
+}
+
+function formatKm(value) {
+  return `${Number(value || 0).toFixed(1)} km`;
 }
 
 function longRunKm(week) {
