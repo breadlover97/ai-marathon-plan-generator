@@ -64,6 +64,7 @@ function init() {
   document.querySelector("#copy-sheets").addEventListener("click", copyForSheets);
   document.querySelector("#download-csv").addEventListener("click", downloadCsv);
   document.querySelector("#edit-inputs").addEventListener("click", editInputs);
+  document.querySelector("#return-top").addEventListener("click", returnToGeneratedTop);
 
   for (const button of document.querySelectorAll("[data-next]")) {
     button.addEventListener("click", () => {
@@ -153,6 +154,10 @@ function editInputs() {
   setStep(0);
   form.scrollIntoView({ behavior: "smooth", block: "start" });
   setStatus("You can edit the inputs now. Generate again when ready.", "info");
+}
+
+function returnToGeneratedTop() {
+  output.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function collectProfile() {

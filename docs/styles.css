@@ -362,6 +362,16 @@ legend {
   margin-top: 28px;
 }
 
+.return-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 40px rgba(24, 33, 47, 0.16);
+  white-space: nowrap;
+}
+
 .review-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -406,6 +416,7 @@ legend {
 .output {
   margin-top: 28px;
   padding: 28px;
+  padding-bottom: 86px;
 }
 
 .summary-grid {
@@ -780,5 +791,16 @@ legend {
   .actions button,
   .output-actions button {
     width: 100%;
+  }
+
+  .output-actions .return-top {
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    min-height: 40px;
+  }
+
+  .output {
+    padding-bottom: 78px;
   }
 }
