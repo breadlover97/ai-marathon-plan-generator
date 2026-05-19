@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Marathon Plan Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="Intake sections">
+        <div class="brand">
+          <span class="brand-mark">42</span>
+          <div>
+            <h1>Marathon Plan Generator</h1>
+            <p>Structured plans for editable Google Sheets workflows.</p>
+          </div>
+        </div>
+        <nav class="step-nav">
+          <button type="button" data-step-target="0">Race</button>
+          <button type="button" data-step-target="1">Fitness</button>
+          <button type="button" data-step-target="2">Schedule</button>
+          <button type="button" data-step-target="3">Preferences</button>
+          <button type="button" data-step-target="4">Risk</button>
+          <button type="button" data-step-target="5">Review</button>
+        </nav>
+        <div id="status-box" class="status" hidden></div>
+      </aside>
+
+      <section class="workspace">
+        <form id="intake-form" class="intake-card" novalidate>
+          <section class="step" data-step="0">
+            <div class="step-heading">
+              <span>Step 1</span>
+              <h2>Race Goal</h2>
+            </div>
+            <div class="field-grid two">
+              <label>
+                Athlete name
+                <input name="athleteName" autocomplete="name" placeholder="Optional" />
+              </label>
+              <label>
+                Race name
+                <input name="raceName" required placeholder="Kuala Lumpur Marathon" />
+              </label>
+              <label>
+                Plan start date
+                <input name="startDate" type="date" required />
+              </label>
+              <label>
+                Race date
+                <input name="raceDate" type="date" required />
+              </label>
+              <label>
+                Goal time
+                <input name="goalTime" placeholder="02:50:00" inputmode="numeric" />
+              </label>
+              <label>
+                Goal description
+                <input name="goalDescription" placeholder="PB, finish strong, podium, sub-4" />
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" class="secondary" id="load-example">Load example</button>
+              <button type="button" data-next>Next</button>
+            </div>
+          </section>
+
+          <section class="step" data-step="1" hidden>
+            <div class="step-heading">
+              <span>Step 2</span>
+              <h2>Current Fitness</h2>
+            </div>
+            <div class="field-grid two">
+              <label>
+                Current weekly distance, km
+                <input name="currentWeeklyKm" type="number" min="1" step="0.1" required />
+              </label>
+              <label>
+                Longest run in last month, km
+                <input name="longestRecentRunKm" type="number" min="1" step="0.1" required />
+              </label>
+              <label>
+                Current marathon pace
+                <input name="currentMarathonPace" placeholder="04:15" inputmode="numeric" />
+              </label>
+              <label>
+                Runs per week
+                <select name="runsPerWeek" required>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5" selected>5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                </select>
+              </label>
+              <label>
+                Running ability
+                <select name="runningAbility" required>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced" selected>Advanced</option>
+                  <option value="elite">Elite</option>
+                  <option value="elite_plus">Elite Plus</option>
+                </select>
+              </label>
+              <label>
+                Max long run, km
+                <input name="maxLongRunKm" type="number" min="10" step="0.5" placeholder="Optional" />
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" class="secondary" data-prev>Back</button>
+              <button type="button" data-next>Next</button>
+            </div>
+          </section>
+
+          <section class="step" data-step="2" hidden>
+            <div class="step-heading">
+              <span>Step 3</span>
+              <h2>Weekly Schedule</h2>
+            </div>
+            <div class="field-grid three">
+              <label>
+                Workout day
+                <select name="workoutDay">
+                  <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+                </select>
+              </label>
+              <label>
+                Medium-long day
+                <select name="mediumLongDay">
+                  <option>Monday</option><option>Tuesday</option><option selected>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+                </select>
+              </label>
+              <label>
+                Long-run day
+                <select name="longRunDay">
+                  <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option selected>Saturday</option><option>Sunday</option>
+                </select>
+              </label>
+            </div>
+            <fieldset>
+              <legend>Strength days</legend>
+              <div class="day-grid">
+                <label><input type="checkbox" name="strengthDays" value="Monday" /> Mon</label>
+                <label><input type="checkbox" name="strengthDays" value="Tuesday" /> Tue</label>
+                <label><input type="checkbox" name="strengthDays" value="Wednesday" /> Wed</label>
+                <label><input type="checkbox" name="strengthDays" value="Thursday" checked /> Thu</label>
+                <label><input type="checkbox" name="strengthDays" value="Friday" /> Fri</label>
+                <label><input type="checkbox" name="strengthDays" value="Saturday" /> Sat</label>
+                <label><input type="checkbox" name="strengthDays" value="Sunday" /> Sun</label>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Rest days</legend>
+              <div class="day-grid">
+                <label><input type="checkbox" name="restDays" value="Monday" /> Mon</label>
+                <label><input type="checkbox" name="restDays" value="Tuesday" /> Tue</label>
+                <label><input type="checkbox" name="restDays" value="Wednesday" /> Wed</label>
+                <label><input type="checkbox" name="restDays" value="Thursday" /> Thu</label>
+                <label><input type="checkbox" name="restDays" value="Friday" /> Fri</label>
+                <label><input type="checkbox" name="restDays" value="Saturday" /> Sat</label>
+                <label><input type="checkbox" name="restDays" value="Sunday" checked /> Sun</label>
+              </div>
+            </fieldset>
+            <div class="actions">
+              <button type="button" class="secondary" data-prev>Back</button>
+              <button type="button" data-next>Next</button>
+            </div>
+          </section>
+
+          <section class="step" data-step="3" hidden>
+            <div class="step-heading">
+              <span>Step 4</span>
+              <h2>Training Preferences</h2>
+            </div>
+            <div class="field-grid two">
+              <label>
+                Training volume
+                <select name="trainingVolume">
+                  <option value="gradual">Gradual</option>
+                  <option value="steady">Steady</option>
+                  <option value="progressive" selected>Progressive</option>
+                </select>
+              </label>
+              <label>
+                Difficulty
+                <select name="difficulty">
+                  <option value="comfortable">Comfortable</option>
+                  <option value="balanced">Balanced</option>
+                  <option value="challenging" selected>Challenging</option>
+                </select>
+              </label>
+              <label class="wide">
+                Race specifics
+                <textarea name="raceSpecifics" rows="3" placeholder="Heat, humidity, hills, early start, trail surface"></textarea>
+              </label>
+              <label class="wide">
+                Fuel notes
+                <textarea name="fuelNotes" rows="3" placeholder="Preferred gels, carb/hr target, hydration constraints"></textarea>
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" class="secondary" data-prev>Back</button>
+              <button type="button" data-next>Next</button>
+            </div>
+          </section>
+
+          <section class="step" data-step="4" hidden>
+            <div class="step-heading">
+              <span>Step 5</span>
+              <h2>Risk & Recovery</h2>
+            </div>
+            <div class="field-grid two">
+              <label class="wide">
+                Primary risks
+                <textarea name="primaryRisks" rows="3" placeholder="Injury and burnout, shin pain, work stress"></textarea>
+              </label>
+              <label class="wide">
+                Injury notes
+                <textarea name="injuryNotes" rows="3" placeholder="Optional"></textarea>
+              </label>
+              <label class="wide">
+                Constraints
+                <textarea name="constraints" rows="3" placeholder="Travel weeks, busy work periods, treadmill only, limited weekday time"></textarea>
+              </label>
+              <label class="wide">
+                Admin notes
+                <textarea name="adminNotes" rows="3" placeholder="Race pack collection, travel, shoe rotation"></textarea>
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" class="secondary" data-prev>Back</button>
+              <button type="button" data-next>Review</button>
+            </div>
+          </section>
+
+          <section class="step" data-step="5" hidden>
+            <div class="step-heading">
+              <span>Step 6</span>
+              <h2>Generate Plan</h2>
+            </div>
+            <div class="review-panel">
+              <p>The engine will build weekly mileage, deloads, taper, long-run progression, daily sessions, and Google Sheets export rows from the form values.</p>
+            </div>
+            <div class="actions">
+              <button type="button" class="secondary" data-prev>Back</button>
+              <button type="button" class="secondary" id="reset-form">Reset</button>
+              <button type="submit">Generate Training Plan</button>
+            </div>
+          </section>
+        </form>
+
+        <section id="plan-output" class="output" hidden>
+          <div class="output-header">
+            <div>
+              <span class="eyebrow">Generated plan</span>
+              <h2>Training Plan</h2>
+            </div>
+            <div class="output-actions">
+              <button type="button" class="secondary" id="edit-inputs">Edit inputs</button>
+              <button type="button" class="secondary" id="download-csv">Download CSV</button>
+              <button type="button" id="copy-sheets">Copy for Google Sheets</button>
+            </div>
+          </div>
+          <div id="plan-summary" class="summary-grid"></div>
+          <textarea id="sheets-transfer" class="transfer-box" readonly hidden aria-label="Google Sheets transfer table"></textarea>
+          <div id="plan-table" class="plan-table"></div>
+        </section>
+      </section>
+    </main>
+    <script src="engine.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

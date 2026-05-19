@@ -10,6 +10,10 @@ The product goal is simple:
 
 ## Current scope
 
+- Static web app published from `docs/` for GitHub Pages.
+- Guided intake form with required and optional fields.
+- In-browser plan preview and export to Google Sheets via copyable TSV.
+- CSV download fallback.
 - Research-backed intake schema for marathon plan generation.
 - Deterministic training-plan engine for weekly mileage, workout types, deloads, taper, long runs, and strength slots.
 - Google Sheets-ready `.xlsx` exporter matching the provided workbook structure:
@@ -24,6 +28,10 @@ The product goal is simple:
 
 ```text
 docs/
+  index.html               Static web app entrypoint for GitHub Pages
+  app.js                   Form, preview, and export UI
+  engine.js                Browser-side deterministic training engine
+  styles.css               Web app styling
   research.md              Research notes and source-backed product decisions
   training-methodology.md  Training rules used by the generator
 examples/
@@ -35,6 +43,7 @@ src/marathon_generator/
   export_google_sheet.py   XLSX export shaped for native Google Sheets import
 scripts/
   generate_sample.py       Builds an example workbook
+  smoke-test-web.js        Browser-engine smoke test
 tests/
   test_plan.py             Safety and structure checks
 ```
@@ -46,10 +55,19 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 python scripts/generate_sample.py
+node scripts/smoke-test-web.js
 pytest
 ```
 
 The generated workbook is saved to `outputs/sample_marathon_plan.xlsx`.
+
+The web app can be previewed locally with:
+
+```bash
+python3 -m http.server 8765 --bind 127.0.0.1 -d docs
+```
+
+Then open `http://127.0.0.1:8765`.
 
 ## AI design
 
@@ -59,4 +77,3 @@ The first version separates AI from the training engine:
 - The training engine owns safety-sensitive logic such as weekly progression, deloads, taper, long-run caps, and workout distribution.
 
 That split keeps the end product flexible while avoiding the worst failure mode of an AI coach: confident but unsafe training load.
-
