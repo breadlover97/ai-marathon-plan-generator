@@ -220,6 +220,38 @@ fieldset {
   font-weight: 800;
 }
 
+.field-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.field-tag {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.field-tag.required {
+  background: #eaf1ff;
+  color: #2356a8;
+  border: 1px solid #bfd3ff;
+}
+
+.field-tag.optional {
+  background: #f2f4f7;
+  color: #667085;
+  border: 1px solid #d9dee8;
+}
+
 .hint {
   color: var(--muted);
   font-size: 0.78rem;
@@ -274,6 +306,7 @@ fieldset {
 legend {
   padding: 0 8px;
   color: var(--ink);
+  font-weight: 800;
 }
 
 .day-grid {

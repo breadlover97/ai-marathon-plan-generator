@@ -33,27 +33,27 @@
             </div>
             <div class="field-grid two">
               <label>
-                Athlete name
+                <span class="field-title">Athlete name <span class="field-tag optional">Optional</span></span>
                 <input name="athleteName" autocomplete="name" placeholder="e.g. Alex" />
                 <span class="hint">Optional. Used only to personalize labels.</span>
               </label>
               <label>
-                Race name
+                <span class="field-title">Race name <span class="field-tag required">Required</span></span>
                 <input name="raceName" required placeholder="e.g. Kuala Lumpur Marathon" />
                 <span class="hint">Required. This appears at the top of the plan.</span>
               </label>
               <label>
-                Plan start date
+                <span class="field-title">Plan start date <span class="field-tag required">Required</span></span>
                 <input name="startDate" type="date" required />
                 <span class="hint">Required. When the training plan should begin.</span>
               </label>
               <label>
-                Race date
+                <span class="field-title">Race date <span class="field-tag required">Required</span></span>
                 <input name="raceDate" type="date" required />
                 <span class="hint">Required. Used to calculate plan length and taper.</span>
               </label>
               <fieldset class="time-field">
-                <legend>Goal time</legend>
+                <legend>Goal time <span class="field-tag optional">Optional</span></legend>
                 <div class="time-grid">
                   <label>Hours<input name="goalHours" type="number" min="0" max="9" inputmode="numeric" placeholder="3" /></label>
                   <label>Minutes<input name="goalMinutes" type="number" min="0" max="59" inputmode="numeric" placeholder="45" /></label>
@@ -62,7 +62,7 @@
                 <span class="hint">Optional. Leave blank for effort-based workouts.</span>
               </fieldset>
               <label>
-                Goal description
+                <span class="field-title">Goal description <span class="field-tag optional">Optional</span></span>
                 <input name="goalDescription" placeholder="e.g. finish strong, PB, sub-4" />
                 <span class="hint">Optional. Plain-language goal shown in the plan.</span>
               </label>
@@ -79,17 +79,17 @@
             </div>
             <div class="field-grid two">
               <label>
-                Current weekly distance, km
+                <span class="field-title">Current weekly distance, km <span class="field-tag required">Required</span></span>
                 <input name="currentWeeklyKm" type="number" min="1" step="0.1" required placeholder="e.g. 35" />
                 <span class="hint">Required. Average weekly running volume from the last 3-4 weeks.</span>
               </label>
               <label>
-                Longest run in last month, km
+                <span class="field-title">Longest run in last month, km <span class="field-tag required">Required</span></span>
                 <input name="longestRecentRunKm" type="number" min="1" step="0.1" required placeholder="e.g. 18" />
                 <span class="hint">Required. Helps set a safe long-run progression.</span>
               </label>
               <fieldset class="time-field">
-                <legend>Current marathon pace</legend>
+                <legend>Current marathon pace <span class="field-tag optional">Optional</span></legend>
                 <div class="time-grid compact">
                   <label>Minutes<input name="paceMinutes" type="number" min="0" max="30" inputmode="numeric" placeholder="5" /></label>
                   <label>Seconds<input name="paceSeconds" type="number" min="0" max="59" inputmode="numeric" placeholder="20" /></label>
@@ -97,7 +97,7 @@
                 <span class="hint">Optional. Per km pace if you already know it.</span>
               </fieldset>
               <label>
-                Runs per week
+                <span class="field-title">Runs per week <span class="field-tag required">Required</span></span>
                 <select name="runsPerWeek" required>
                   <option value="" selected>Choose runs per week</option>
                   <option value="3">3</option>
@@ -109,7 +109,7 @@
                 <span class="hint">Required. How many run sessions you can realistically complete.</span>
               </label>
               <label>
-                Running ability
+                <span class="field-title">Running ability <span class="field-tag required">Required</span></span>
                 <select name="runningAbility" required>
                   <option value="" selected>Choose current level</option>
                   <option value="beginner">Beginner: can run 5 km</option>
@@ -121,7 +121,7 @@
                 <span class="hint">Required. Pick the closest current level, not your goal level.</span>
               </label>
               <label>
-                Max long run, km
+                <span class="field-title">Max long run, km <span class="field-tag optional">Optional</span></span>
                 <input name="maxLongRunKm" type="number" min="10" step="0.5" placeholder="e.g. 32" />
                 <span class="hint">Optional. Leave blank to let the engine choose a cap.</span>
               </label>
@@ -138,21 +138,21 @@
             </div>
             <div class="field-grid three">
               <label>
-                Workout day
+                <span class="field-title">Workout day <span class="field-tag required">Required</span></span>
                 <select name="workoutDay" required>
                   <option value="" selected>Choose workout day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
                 </select>
                 <span class="hint">Required. The main quality session of the week.</span>
               </label>
               <label>
-                Medium-long day
+                <span class="field-title">Medium-long day <span class="field-tag required">Required</span></span>
                 <select name="mediumLongDay" required>
                   <option value="" selected>Choose medium-long day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
                 </select>
                 <span class="hint">Required. Usually shorter than the long run, longer than easy runs.</span>
               </label>
               <label>
-                Long-run day
+                <span class="field-title">Long-run day <span class="field-tag required">Required</span></span>
                 <select name="longRunDay" required>
                   <option value="" selected>Choose long-run day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
                 </select>
@@ -160,7 +160,7 @@
               </label>
             </div>
             <fieldset>
-              <legend>Strength days</legend>
+              <legend>Strength days <span class="field-tag optional">Optional</span></legend>
               <div class="day-grid">
                 <label><input type="checkbox" name="strengthDays" value="Monday" /> Mon</label>
                 <label><input type="checkbox" name="strengthDays" value="Tuesday" /> Tue</label>
@@ -172,7 +172,7 @@
               </div>
             </fieldset>
             <fieldset>
-              <legend>Rest days</legend>
+              <legend>Rest days <span class="field-tag optional">Optional</span></legend>
               <div class="day-grid">
                 <label><input type="checkbox" name="restDays" value="Monday" /> Mon</label>
                 <label><input type="checkbox" name="restDays" value="Tuesday" /> Tue</label>
@@ -195,7 +195,7 @@
             </div>
             <div class="field-grid two">
               <label>
-                Training volume
+                <span class="field-title">Training volume <span class="field-tag required">Required</span></span>
                 <select name="trainingVolume" required>
                   <option value="" selected>Choose volume style</option>
                   <option value="gradual">Gradual</option>
@@ -205,7 +205,7 @@
                 <span class="hint">Required. Gradual is safest; progressive builds more ambitiously.</span>
               </label>
               <label>
-                Difficulty
+                <span class="field-title">Difficulty <span class="field-tag required">Required</span></span>
                 <select name="difficulty" required>
                   <option value="" selected>Choose difficulty</option>
                   <option value="comfortable">Comfortable</option>
@@ -215,12 +215,12 @@
                 <span class="hint">Required. Controls workout intensity and long-run quality.</span>
               </label>
               <label class="wide">
-                Race specifics
+                <span class="field-title">Race specifics <span class="field-tag optional">Optional</span></span>
                 <textarea name="raceSpecifics" rows="3" placeholder="Heat, humidity, hills, early start, trail surface"></textarea>
                 <span class="hint">Optional. Add anything that changes how the plan should feel.</span>
               </label>
               <label class="wide">
-                Fuel notes
+                <span class="field-title">Fuel notes <span class="field-tag optional">Optional</span></span>
                 <textarea name="fuelNotes" rows="3" placeholder="Preferred gels, carb/hr target, hydration constraints"></textarea>
                 <span class="hint">Optional. Used in long-run and race-specific notes.</span>
               </label>
@@ -237,22 +237,22 @@
             </div>
             <div class="field-grid two">
               <label class="wide">
-                Primary risks
+                <span class="field-title">Primary risks <span class="field-tag optional">Optional</span></span>
                 <textarea name="primaryRisks" rows="3" placeholder="Injury and burnout, shin pain, work stress"></textarea>
                 <span class="hint">Optional. The plan will use this in adjustment notes.</span>
               </label>
               <label class="wide">
-                Injury notes
+                <span class="field-title">Injury notes <span class="field-tag optional">Optional</span></span>
                 <textarea name="injuryNotes" rows="3" placeholder="Recent pain, recurring issues, physio guidance"></textarea>
                 <span class="hint">Optional. Helps make warnings more conservative.</span>
               </label>
               <label class="wide">
-                Constraints
+                <span class="field-title">Constraints <span class="field-tag optional">Optional</span></span>
                 <textarea name="constraints" rows="3" placeholder="Travel weeks, busy work periods, treadmill only, limited weekday time"></textarea>
                 <span class="hint">Optional. Useful context for weekly notes.</span>
               </label>
               <label class="wide">
-                Admin notes
+                <span class="field-title">Admin notes <span class="field-tag optional">Optional</span></span>
                 <textarea name="adminNotes" rows="3" placeholder="Race pack collection, travel, shoe rotation"></textarea>
                 <span class="hint">Optional. Added to the plan side notes.</span>
               </label>
