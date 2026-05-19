@@ -36,28 +36,34 @@
             </div>
             <div class="field-grid two">
               <label>
-                Athlete name
-                <input name="athleteName" autocomplete="name" placeholder="Optional" />
+                Athlete name <span class="optional-tag">Optional</span>
+                <input name="athleteName" autocomplete="name" placeholder="e.g. Alex" />
+                <span class="hint">Only used to personalize labels.</span>
               </label>
               <label>
-                Race name
-                <input name="raceName" required placeholder="Kuala Lumpur Marathon" />
+                Race name <span class="required-tag">Required</span>
+                <input name="raceName" required placeholder="e.g. Kuala Lumpur Marathon" />
+                <span class="hint">This appears at the top of the plan.</span>
               </label>
               <label>
-                Plan start date
+                Plan start date <span class="required-tag">Required</span>
                 <input name="startDate" type="date" required />
+                <span class="hint">When the training plan should begin.</span>
               </label>
               <label>
-                Race date
+                Race date <span class="required-tag">Required</span>
                 <input name="raceDate" type="date" required />
+                <span class="hint">Used to calculate plan length and taper.</span>
               </label>
               <label>
-                Goal time
-                <input name="goalTime" placeholder="02:50:00" inputmode="numeric" />
+                Goal time <span class="optional-tag">Optional</span>
+                <input name="goalTime" placeholder="e.g. 03:45:00" inputmode="numeric" />
+                <span class="hint">Leave blank for effort-based workouts.</span>
               </label>
               <label>
-                Goal description
-                <input name="goalDescription" placeholder="PB, finish strong, podium, sub-4" />
+                Goal description <span class="optional-tag">Optional</span>
+                <input name="goalDescription" placeholder="e.g. finish strong, PB, sub-4" />
+                <span class="hint">Plain-language goal shown in the plan.</span>
               </label>
             </div>
             <div class="actions">
@@ -73,40 +79,48 @@
             </div>
             <div class="field-grid two">
               <label>
-                Current weekly distance, km
-                <input name="currentWeeklyKm" type="number" min="1" step="0.1" required />
+                Current weekly distance, km <span class="required-tag">Required</span>
+                <input name="currentWeeklyKm" type="number" min="1" step="0.1" required placeholder="e.g. 35" />
+                <span class="hint">Average weekly running volume from the last 3-4 weeks.</span>
               </label>
               <label>
-                Longest run in last month, km
-                <input name="longestRecentRunKm" type="number" min="1" step="0.1" required />
+                Longest run in last month, km <span class="required-tag">Required</span>
+                <input name="longestRecentRunKm" type="number" min="1" step="0.1" required placeholder="e.g. 18" />
+                <span class="hint">Helps set a safe long-run progression.</span>
               </label>
               <label>
-                Current marathon pace
-                <input name="currentMarathonPace" placeholder="04:15" inputmode="numeric" />
+                Current marathon pace <span class="optional-tag">Optional</span>
+                <input name="currentMarathonPace" placeholder="e.g. 05:20" inputmode="numeric" />
+                <span class="hint">Use mm:ss per km if you already know it.</span>
               </label>
               <label>
-                Runs per week
+                Runs per week <span class="required-tag">Required</span>
                 <select name="runsPerWeek" required>
+                  <option value="" selected>Choose runs per week</option>
                   <option value="3">3</option>
                   <option value="4">4</option>
-                  <option value="5" selected>5</option>
+                  <option value="5">5</option>
                   <option value="6">6</option>
                   <option value="7">7</option>
                 </select>
+                <span class="hint">How many run sessions you can realistically complete.</span>
               </label>
               <label>
-                Running ability
+                Running ability <span class="required-tag">Required</span>
                 <select name="runningAbility" required>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced" selected>Advanced</option>
-                  <option value="elite">Elite</option>
-                  <option value="elite_plus">Elite Plus</option>
+                  <option value="" selected>Choose current level</option>
+                  <option value="beginner">Beginner: can run 5 km</option>
+                  <option value="intermediate">Intermediate: runs regularly</option>
+                  <option value="advanced">Advanced: structured workouts</option>
+                  <option value="elite">Elite: high-volume experienced runner</option>
+                  <option value="elite_plus">Elite Plus: 80+ km/week</option>
                 </select>
+                <span class="hint">Pick the closest current level, not your goal level.</span>
               </label>
               <label>
-                Max long run, km
-                <input name="maxLongRunKm" type="number" min="10" step="0.5" placeholder="Optional" />
+                Max long run, km <span class="optional-tag">Optional</span>
+                <input name="maxLongRunKm" type="number" min="10" step="0.5" placeholder="e.g. 32" />
+                <span class="hint">Leave blank to let the engine choose a cap.</span>
               </label>
             </div>
             <div class="actions">
@@ -122,38 +136,41 @@
             </div>
             <div class="field-grid three">
               <label>
-                Workout day
-                <select name="workoutDay">
-                  <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+                Workout day <span class="required-tag">Required</span>
+                <select name="workoutDay" required>
+                  <option value="" selected>Choose workout day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
                 </select>
+                <span class="hint">The main quality session of the week.</span>
               </label>
               <label>
-                Medium-long day
-                <select name="mediumLongDay">
-                  <option>Monday</option><option>Tuesday</option><option selected>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+                Medium-long day <span class="required-tag">Required</span>
+                <select name="mediumLongDay" required>
+                  <option value="" selected>Choose medium-long day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
                 </select>
+                <span class="hint">Usually shorter than the long run, longer than easy runs.</span>
               </label>
               <label>
-                Long-run day
-                <select name="longRunDay">
-                  <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option selected>Saturday</option><option>Sunday</option>
+                Long-run day <span class="required-tag">Required</span>
+                <select name="longRunDay" required>
+                  <option value="" selected>Choose long-run day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
                 </select>
+                <span class="hint">The longest session each week.</span>
               </label>
             </div>
             <fieldset>
-              <legend>Strength days</legend>
+              <legend>Strength days <span class="optional-tag">Optional</span></legend>
               <div class="day-grid">
                 <label><input type="checkbox" name="strengthDays" value="Monday" /> Mon</label>
                 <label><input type="checkbox" name="strengthDays" value="Tuesday" /> Tue</label>
                 <label><input type="checkbox" name="strengthDays" value="Wednesday" /> Wed</label>
-                <label><input type="checkbox" name="strengthDays" value="Thursday" checked /> Thu</label>
+                <label><input type="checkbox" name="strengthDays" value="Thursday" /> Thu</label>
                 <label><input type="checkbox" name="strengthDays" value="Friday" /> Fri</label>
                 <label><input type="checkbox" name="strengthDays" value="Saturday" /> Sat</label>
                 <label><input type="checkbox" name="strengthDays" value="Sunday" /> Sun</label>
               </div>
             </fieldset>
             <fieldset>
-              <legend>Rest days</legend>
+              <legend>Rest days <span class="optional-tag">Optional</span></legend>
               <div class="day-grid">
                 <label><input type="checkbox" name="restDays" value="Monday" /> Mon</label>
                 <label><input type="checkbox" name="restDays" value="Tuesday" /> Tue</label>
@@ -161,7 +178,7 @@
                 <label><input type="checkbox" name="restDays" value="Thursday" /> Thu</label>
                 <label><input type="checkbox" name="restDays" value="Friday" /> Fri</label>
                 <label><input type="checkbox" name="restDays" value="Saturday" /> Sat</label>
-                <label><input type="checkbox" name="restDays" value="Sunday" checked /> Sun</label>
+                <label><input type="checkbox" name="restDays" value="Sunday" /> Sun</label>
               </div>
             </fieldset>
             <div class="actions">
@@ -177,27 +194,31 @@
             </div>
             <div class="field-grid two">
               <label>
-                Training volume
-                <select name="trainingVolume">
+                Training volume <span class="required-tag">Required</span>
+                <select name="trainingVolume" required>
+                  <option value="" selected>Choose volume style</option>
                   <option value="gradual">Gradual</option>
                   <option value="steady">Steady</option>
-                  <option value="progressive" selected>Progressive</option>
+                  <option value="progressive">Progressive</option>
                 </select>
+                <span class="hint">Gradual is safest; progressive builds more ambitiously.</span>
               </label>
               <label>
-                Difficulty
-                <select name="difficulty">
+                Difficulty <span class="required-tag">Required</span>
+                <select name="difficulty" required>
+                  <option value="" selected>Choose difficulty</option>
                   <option value="comfortable">Comfortable</option>
                   <option value="balanced">Balanced</option>
-                  <option value="challenging" selected>Challenging</option>
+                  <option value="challenging">Challenging</option>
                 </select>
+                <span class="hint">Controls workout intensity and long-run quality.</span>
               </label>
               <label class="wide">
-                Race specifics
+                Race specifics <span class="optional-tag">Optional</span>
                 <textarea name="raceSpecifics" rows="3" placeholder="Heat, humidity, hills, early start, trail surface"></textarea>
               </label>
               <label class="wide">
-                Fuel notes
+                Fuel notes <span class="optional-tag">Optional</span>
                 <textarea name="fuelNotes" rows="3" placeholder="Preferred gels, carb/hr target, hydration constraints"></textarea>
               </label>
             </div>
@@ -214,19 +235,19 @@
             </div>
             <div class="field-grid two">
               <label class="wide">
-                Primary risks
+                Primary risks <span class="optional-tag">Optional</span>
                 <textarea name="primaryRisks" rows="3" placeholder="Injury and burnout, shin pain, work stress"></textarea>
               </label>
               <label class="wide">
-                Injury notes
+                Injury notes <span class="optional-tag">Optional</span>
                 <textarea name="injuryNotes" rows="3" placeholder="Optional"></textarea>
               </label>
               <label class="wide">
-                Constraints
+                Constraints <span class="optional-tag">Optional</span>
                 <textarea name="constraints" rows="3" placeholder="Travel weeks, busy work periods, treadmill only, limited weekday time"></textarea>
               </label>
               <label class="wide">
-                Admin notes
+                Admin notes <span class="optional-tag">Optional</span>
                 <textarea name="adminNotes" rows="3" placeholder="Race pack collection, travel, shoe rotation"></textarea>
               </label>
             </div>
@@ -243,6 +264,7 @@
             </div>
             <div class="review-panel">
               <p>The engine will build weekly mileage, deloads, taper, long-run progression, daily sessions, and Google Sheets export rows from the form values.</p>
+              <div id="review-summary" class="review-summary"></div>
             </div>
             <div class="actions">
               <button type="button" class="secondary" data-prev>Back</button>

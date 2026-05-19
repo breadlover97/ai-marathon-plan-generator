@@ -38,41 +38,51 @@ const defaults = {
   injuryNotes: "Previous shin/calf sensitivity",
 };
 
+const stepRequirements = [
+  ["raceName", "startDate", "raceDate"],
+  ["currentWeeklyKm", "longestRecentRunKm", "runsPerWeek", "runningAbility"],
+  ["workoutDay", "mediumLongDay", "longRunDay"],
+  ["trainingVolume", "difficulty"],
+  [],
+  [],
+];
+
 function init() {
   form.addEventListener("submit", handleSubmit);
   document.querySelector("#load-example").addEventListener("click", loadExample);
   document.querySelector("#reset-form").addEventListener("click", resetForm);
   document.querySelector("#copy-sheets").addEventListener("click", copyForSheets);
   document.querySelector("#download-csv").addEventListener("click", downloadCsv);
-  document.querySelector("#edit-inputs").addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+  document.querySelector("#edit-inputs").addEventListener("click", editInputs);
 
   for (const button of document.querySelectorAll("[data-next]")) {
-    button.addEventListener("click", () => setStep(Math.min(state.currentStep + 1, steps.length - 1)));
+    button.addEventListener("click", () => {
+      if (validateStep(state.currentStep)) {
+        setStep(Math.min(state.currentStep + 1, steps.length - 1));
+      }
+    });
   }
   for (const button of document.querySelectorAll("[data-prev]")) {
     button.addEventListener("click", () => setStep(Math.max(state.currentStep - 1, 0)));
   }
   for (const item of navItems) {
-    item.addEventListener("click", () => setStep(Number(item.dataset.stepTarget)));
+    item.addEventListener("click", () => {
+      const target = Number(item.dataset.stepTarget);
+      if (target <= state.currentStep || validateStepsBefore(target)) {
+        setStep(target);
+      }
+    });
   }
 
-  setTodayDefaults();
   setStep(0);
 }
 
-function setTodayDefaults() {
-  const today = new Date();
-  const start = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-  const race = new Date(start);
-  race.setUTCDate(race.getUTCDate() + 7 * 20);
-  form.elements.startDate.value = start.toISOString().slice(0, 10);
-  form.elements.raceDate.value = race.toISOString().slice(0, 10);
-}
-
-function setStep(index) {
+function setStep(index, options = {}) {
   state.currentStep = index;
   steps.forEach((step, stepIndex) => step.toggleAttribute("hidden", stepIndex !== index));
   navItems.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === index));
+  if (!options.preserveHighlights) clearFieldHighlights();
+  if (index === 5) renderReview();
 }
 
 function loadExample() {
@@ -86,11 +96,12 @@ function loadExample() {
 
 function resetForm() {
   form.reset();
-  setTodayDefaults();
-  setCheckboxes("strengthDays", ["Thursday"]);
-  setCheckboxes("restDays", ["Sunday"]);
+  clearFieldHighlights();
   state.plan = null;
   output.hidden = true;
+  transferBox.hidden = true;
+  transferBox.value = "";
+  setStep(0);
   setStatus("Form reset.", "info");
 }
 
@@ -119,6 +130,15 @@ function handleSubmit(event) {
   transferBox.value = "";
   output.hidden = false;
   output.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function editInputs() {
+  output.hidden = true;
+  transferBox.hidden = true;
+  transferBox.value = "";
+  setStep(0);
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+  setStatus("You can edit the inputs now. Generate again when ready.", "info");
 }
 
 function collectProfile() {
@@ -154,6 +174,97 @@ function collectProfile() {
 
 function clean(value) {
   return String(value || "").trim();
+}
+
+function validateStep(stepIndex) {
+  const missing = stepRequirements[stepIndex]
+    .map((name) => form.elements[name])
+    .filter((field) => !clean(field.value));
+
+  clearFieldHighlights();
+  if (missing.length) {
+    for (const field of missing) markInvalid(field);
+    missing[0].focus();
+    setStatus("Please complete the required fields on this step before continuing.", "error");
+    return false;
+  }
+
+  if (stepIndex === 0 && form.elements.startDate.value && form.elements.raceDate.value) {
+    const start = new Date(`${form.elements.startDate.value}T00:00:00Z`);
+    const race = new Date(`${form.elements.raceDate.value}T00:00:00Z`);
+    if (race < start) {
+      markInvalid(form.elements.raceDate);
+      setStatus("Race date must be after the plan start date.", "error");
+      return false;
+    }
+  }
+
+  if (stepIndex === 2) {
+    const conflicts = scheduleConflicts();
+    if (conflicts.length) {
+      setStatus(conflicts.join(" "), "error");
+      return false;
+    }
+  }
+
+  setStatus("Looks good. Keep going.", "success");
+  return true;
+}
+
+function validateStepsBefore(targetStep) {
+  for (let index = 0; index < targetStep; index += 1) {
+    if (!validateStep(index)) {
+      setStep(index, { preserveHighlights: true });
+      return false;
+    }
+  }
+  return true;
+}
+
+function scheduleConflicts() {
+  const workout = form.elements.workoutDay.value;
+  const medium = form.elements.mediumLongDay.value;
+  const long = form.elements.longRunDay.value;
+  const strength = new Set(new FormData(form).getAll("strengthDays"));
+  const rest = new Set(new FormData(form).getAll("restDays"));
+  const messages = [];
+  const keyDays = [
+    ["Workout day", workout],
+    ["Medium-long day", medium],
+    ["Long-run day", long],
+  ];
+  const dayCounts = keyDays.reduce((map, [, day]) => map.set(day, (map.get(day) || 0) + 1), new Map());
+  const duplicate = [...dayCounts.entries()].find(([day, count]) => day && count > 1);
+  if (duplicate) messages.push("Workout, medium-long, and long-run days must be different.");
+  for (const [label, day] of keyDays) {
+    if (rest.has(day)) messages.push(`${label} cannot also be a rest day.`);
+    if (strength.has(day)) messages.push(`${label} cannot also be a strength-only day.`);
+  }
+  return messages;
+}
+
+function markInvalid(field) {
+  field.classList.add("is-invalid");
+  field.closest("label")?.classList.add("has-error");
+}
+
+function clearFieldHighlights() {
+  form.querySelectorAll(".is-invalid").forEach((field) => field.classList.remove("is-invalid"));
+  form.querySelectorAll(".has-error").forEach((label) => label.classList.remove("has-error"));
+}
+
+function renderReview() {
+  const profile = collectProfile();
+  const reviewPanel = document.querySelector("#review-summary");
+  if (!reviewPanel) return;
+  const rows = [
+    ["Race", profile.raceName || "Missing"],
+    ["Dates", profile.startDate && profile.raceDate ? `${profile.startDate} to ${profile.raceDate}` : "Missing"],
+    ["Current running", profile.currentWeeklyKm && profile.longestRecentRunKm ? `${profile.currentWeeklyKm} km/week, ${profile.longestRecentRunKm} km long run` : "Missing"],
+    ["Schedule", profile.workoutDay && profile.mediumLongDay && profile.longRunDay ? `Workout ${profile.workoutDay}, medium-long ${profile.mediumLongDay}, long run ${profile.longRunDay}` : "Missing"],
+    ["Training style", profile.trainingVolume && profile.difficulty ? `${profile.trainingVolume}, ${profile.difficulty}` : "Missing"],
+  ];
+  reviewPanel.innerHTML = rows.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
 }
 
 function renderSummary(plan) {

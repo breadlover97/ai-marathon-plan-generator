@@ -90,9 +90,25 @@
     if (!profile.currentWeeklyKm || Number(profile.currentWeeklyKm) <= 0) errors.push("Current weekly distance is required.");
     if (!profile.longestRecentRunKm || Number(profile.longestRecentRunKm) <= 0) errors.push("Longest recent run is required.");
     if (!profile.runsPerWeek || Number(profile.runsPerWeek) < 3) errors.push("Choose at least 3 running days per week.");
+    if (!profile.runningAbility) errors.push("Running ability is required.");
+    if (!profile.workoutDay) errors.push("Workout day is required.");
+    if (!profile.mediumLongDay) errors.push("Medium-long day is required.");
+    if (!profile.longRunDay) errors.push("Long-run day is required.");
+    if (!profile.trainingVolume) errors.push("Training volume is required.");
+    if (!profile.difficulty) errors.push("Difficulty is required.");
 
     if (profile.startDate && profile.raceDate && parseDate(profile.raceDate) < parseDate(profile.startDate)) {
       errors.push("Race date must be after the plan start date.");
+    }
+
+    const keyDays = [profile.workoutDay, profile.mediumLongDay, profile.longRunDay].filter(Boolean);
+    if (new Set(keyDays).size !== keyDays.length) {
+      errors.push("Workout, medium-long, and long-run days must be different.");
+    }
+
+    for (const day of keyDays) {
+      if ((profile.restDays || []).includes(day)) errors.push("Key run days cannot also be rest days.");
+      if ((profile.strengthDays || []).includes(day)) errors.push("Key run days cannot also be strength-only days.");
     }
 
     if (profile.currentWeeklyKm && profile.longestRecentRunKm && Number(profile.longestRecentRunKm) > Number(profile.currentWeeklyKm) * 0.75) {
@@ -423,4 +439,3 @@
     marathonPaceFromGoal,
   };
 });
-
