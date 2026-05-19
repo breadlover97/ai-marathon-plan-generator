@@ -17,11 +17,14 @@ const defaults = {
   raceName: "Standard Chartered Kuala Lumpur Marathon 2026",
   startDate: "2026-05-11",
   raceDate: "2026-10-04",
-  goalTime: "02:50:00",
+  goalHours: "2",
+  goalMinutes: "50",
+  goalSeconds: "00",
   goalDescription: "2h 50m / Top 8 Open",
   currentWeeklyKm: "52",
   longestRecentRunKm: "21",
-  currentMarathonPace: "04:15",
+  paceMinutes: "4",
+  paceSeconds: "15",
   runsPerWeek: "5",
   runningAbility: "advanced",
   trainingVolume: "progressive",
@@ -50,7 +53,7 @@ const stepRequirements = [
 function init() {
   form.addEventListener("submit", handleSubmit);
   document.querySelector("#load-example").addEventListener("click", loadExample);
-  document.querySelector("#reset-form").addEventListener("click", resetForm);
+  document.querySelectorAll("[data-reset]").forEach((button) => button.addEventListener("click", resetForm));
   document.querySelector("#copy-sheets").addEventListener("click", copyForSheets);
   document.querySelector("#download-csv").addEventListener("click", downloadCsv);
   document.querySelector("#edit-inputs").addEventListener("click", editInputs);
@@ -95,6 +98,9 @@ function loadExample() {
 }
 
 function resetForm() {
+  if (!window.confirm("Reset the form and clear all inputs? This cannot be undone.")) {
+    return;
+  }
   form.reset();
   clearFieldHighlights();
   state.plan = null;
@@ -148,11 +154,11 @@ function collectProfile() {
     raceName: clean(data.get("raceName")),
     startDate: data.get("startDate"),
     raceDate: data.get("raceDate"),
-    goalTime: clean(data.get("goalTime")),
+    goalTime: composeTime(data.get("goalHours"), data.get("goalMinutes"), data.get("goalSeconds")),
     goalDescription: clean(data.get("goalDescription")) || "Finish strong",
     currentWeeklyKm: Number(data.get("currentWeeklyKm")),
     longestRecentRunKm: Number(data.get("longestRecentRunKm")),
-    currentMarathonPace: clean(data.get("currentMarathonPace")),
+    currentMarathonPace: composePace(data.get("paceMinutes"), data.get("paceSeconds")),
     runsPerWeek: Number(data.get("runsPerWeek")),
     runningAbility: data.get("runningAbility"),
     trainingVolume: data.get("trainingVolume"),
@@ -174,6 +180,29 @@ function collectProfile() {
 
 function clean(value) {
   return String(value || "").trim();
+}
+
+function composeTime(hours, minutes, seconds) {
+  const hasAnyValue = [hours, minutes, seconds].some((value) => clean(value) !== "");
+  if (!hasAnyValue) return "";
+  const safeHours = clampNumber(hours, 0, 99);
+  const safeMinutes = clampNumber(minutes, 0, 59);
+  const safeSeconds = clampNumber(seconds, 0, 59);
+  return `${String(safeHours).padStart(2, "0")}:${String(safeMinutes).padStart(2, "0")}:${String(safeSeconds).padStart(2, "0")}`;
+}
+
+function composePace(minutes, seconds) {
+  const hasAnyValue = [minutes, seconds].some((value) => clean(value) !== "");
+  if (!hasAnyValue) return "";
+  const safeMinutes = clampNumber(minutes, 0, 59);
+  const safeSeconds = clampNumber(seconds, 0, 59);
+  return `${String(safeMinutes).padStart(2, "0")}:${String(safeSeconds).padStart(2, "0")}`;
+}
+
+function clampNumber(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return min;
+  return Math.min(Math.max(Math.trunc(number), min), max);
 }
 
 function validateStep(stepIndex) {
