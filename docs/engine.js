@@ -397,7 +397,7 @@
 
   function planToTsv(plan) {
     const rows = [
-      ["Week", "Date Range", "Phase", "Day", "Type", "Plan", "Planned km", "Week Total", "Focus", "Notes", "Strength", "Fuel", "Risk", "Adjust"],
+      ["Week", "Date Range", "Phase", "Day", "Type", "Plan", "Planned km", "Week Total"],
     ];
     for (const week of plan.weeks) {
       for (const session of week.sessions) {
@@ -410,12 +410,6 @@
           session.plan,
           session.plannedKm,
           week.targetKm,
-          week.focus,
-          week.notes,
-          week.strengthNote,
-          week.fuelNote,
-          week.riskNote,
-          week.adjustNote,
         ]);
       }
     }

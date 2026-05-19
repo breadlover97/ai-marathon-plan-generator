@@ -312,7 +312,6 @@ function renderSummary(plan) {
     ["Goal pace", plan.goalPacePerKm || "RPE-based"],
     ["Runs/week", plan.profile.runsPerWeek],
     ["Long run", plan.profile.longRunDay],
-    ["Risk", plan.profile.primaryRisks || plan.profile.injuryNotes || "None added"],
     ["Export", "Copy table into Google Sheets or download CSV"],
   ];
   summary.innerHTML = items.map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`).join("");
@@ -346,12 +345,6 @@ function renderPlan(plan) {
               )
               .join("")}
           </div>
-          <dl class="week-notes">
-            <div><dt>Focus</dt><dd>${week.focus}</dd></div>
-            <div><dt>Fuel</dt><dd>${week.fuelNote}</dd></div>
-            <div><dt>Risk</dt><dd>${week.riskNote}</dd></div>
-            <div><dt>Adjust</dt><dd>${week.adjustNote}</dd></div>
-          </dl>
         </article>
       `
     )

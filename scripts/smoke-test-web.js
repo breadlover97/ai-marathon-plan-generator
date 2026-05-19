@@ -37,9 +37,12 @@ assert.ok(plan.summary.peakKm > 70);
 assert.ok(plan.goalPacePerKm.includes("4:02"));
 assert.ok(engine.planToTsv(plan).includes("Week\tDate Range\tPhase"));
 assert.ok(engine.planToCsv(plan).includes('"Week","Date Range","Phase"'));
+assert.ok(!engine.planToTsv(plan).includes("\tFocus\t"));
+assert.ok(!engine.planToTsv(plan).includes("\tFuel\t"));
+assert.ok(!engine.planToTsv(plan).includes("\tRisk\t"));
+assert.ok(!engine.planToTsv(plan).includes("\tAdjust"));
 
 const invalid = engine.buildTrainingPlan({ ...profile, raceName: "", currentWeeklyKm: 0 });
 assert.ok(invalid.validation.errors.length >= 2);
 
 console.log(`smoke ok: ${plan.weeks.length} weeks, peak ${plan.summary.peakKm} km`);
-
