@@ -536,7 +536,7 @@ function setupMileageChartHover(container, points, dims) {
 }
 
 function formatKm(value) {
-  return `${Number(value || 0).toFixed(1)} km`;
+  return `${Math.round(Number(value || 0))} km`;
 }
 
 function longRunKm(week) {

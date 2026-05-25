@@ -262,16 +262,16 @@
     if (Number(profile.runsPerWeek) <= 4) mediumKm *= 0.75;
     const easyBudget = Math.max(targetKm - longKm - workoutKm - mediumKm, 0);
     const easyDays = runDays.filter((day) => dayTypes[day] === "Easy Run");
-    const easyKm = round1(easyBudget / Math.max(easyDays.length, 1));
+    const easyKm = roundKm(easyBudget / Math.max(easyDays.length, 1));
 
     return WEEKDAYS.map((day) => {
       const sessionType = dayTypes[day];
       if (sessionType === "Rest") return session(day, "Rest", "Full rest", 0);
       if (sessionType === "Strength") return session(day, "Strength", strengthPlan(profile), 0);
-      if (sessionType === "Medium-Long") return session(day, sessionType, mediumLongPlan(phase), round1(mediumKm));
-      if (["Long Run", "Race"].includes(sessionType)) return session(day, sessionType, longRunPlan(profile, phase, weekNumber, totalWeeks, longKm, goalPace), round1(longKm));
+      if (sessionType === "Medium-Long") return session(day, sessionType, mediumLongPlan(phase), roundKm(mediumKm));
+      if (["Long Run", "Race"].includes(sessionType)) return session(day, sessionType, longRunPlan(profile, phase, weekNumber, totalWeeks, longKm, goalPace), roundKm(longKm));
       if (sessionType === "Easy Run") return session(day, sessionType, weekNumber % 2 ? "Easy aerobic + 6 strides" : "Easy aerobic", easyKm);
-      return session(day, sessionType, workoutPlan(sessionType, goalPace), round1(workoutKm));
+      return session(day, sessionType, workoutPlan(sessionType, goalPace), roundKm(workoutKm));
     });
   }
 
@@ -318,7 +318,7 @@
   }
 
   function longRunPlan(profile, phase, weekNumber, totalWeeks, distance, goalPace) {
-    if (weekNumber === totalWeeks) return `${MARATHON_KM.toFixed(1)} km race day: execute rehearsed fueling and pacing`;
+    if (weekNumber === totalWeeks) return `${roundKm(MARATHON_KM)} km race day: execute rehearsed fueling and pacing`;
     if (phase === "Base Build") return `${Math.round(distance)} km easy, no pace pressure`;
     const qualityShare = DIFFICULTY_LONG_RUN_QUALITY[profile.difficulty || "balanced"];
     if (phase === "Race Specific" && weekNumber % 2 === 1) {
@@ -393,6 +393,11 @@
 
   function round1(value) {
     return Math.round(value * 10) / 10;
+  }
+
+  function roundKm(value) {
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    return Math.round(value);
   }
 
   function planToTsv(plan) {
