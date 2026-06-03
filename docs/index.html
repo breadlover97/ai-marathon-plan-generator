@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Marathon Plan Generator</title>
-    <link rel="stylesheet" href="styles.css?v=20260526-1" />
+    <link rel="stylesheet" href="styles.css?v=20260603-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -198,21 +198,31 @@
                 <span class="field-title">Training volume <span class="field-tag required">Required</span></span>
                 <select name="trainingVolume" required>
                   <option value="" selected>Choose volume style</option>
-                  <option value="gradual">Gradual</option>
-                  <option value="steady">Steady</option>
-                  <option value="progressive">Progressive</option>
+                  <option value="gradual">Gradual - conservative build</option>
+                  <option value="steady">Steady - moderate build</option>
+                  <option value="progressive">Progressive - higher build</option>
                 </select>
-                <span class="hint">Required. Gradual is safest; progressive builds more ambitiously.</span>
+                <span class="hint">Required. Sets weekly mileage growth and peak volume.</span>
+                <span class="option-guide" aria-label="Training volume guide">
+                  <span><strong>Gradual</strong> Lower peak mileage, smaller jumps, more recovery room.</span>
+                  <span><strong>Steady</strong> Moderate peak mileage with a predictable build.</span>
+                  <span><strong>Progressive</strong> Higher peak mileage and a faster build if your base supports it.</span>
+                </span>
               </label>
               <label>
                 <span class="field-title">Difficulty <span class="field-tag required">Required</span></span>
                 <select name="difficulty" required>
                   <option value="" selected>Choose difficulty</option>
-                  <option value="comfortable">Comfortable</option>
-                  <option value="balanced">Balanced</option>
-                  <option value="challenging">Challenging</option>
+                  <option value="comfortable">Comfortable - easy-first</option>
+                  <option value="balanced">Balanced - standard load</option>
+                  <option value="challenging">Challenging - harder quality</option>
                 </select>
-                <span class="hint">Required. Controls workout intensity and long-run quality.</span>
+                <span class="hint">Required. Sets workout intensity and long-run quality.</span>
+                <span class="option-guide" aria-label="Difficulty guide">
+                  <span><strong>Comfortable</strong> Lighter workouts, easier long runs, best when recovery is tight.</span>
+                  <span><strong>Balanced</strong> Standard workouts with controlled long-run progression.</span>
+                  <span><strong>Challenging</strong> More demanding workouts and more marathon-effort work.</span>
+                </span>
               </label>
               <label class="wide">
                 <span class="field-title">Race specifics <span class="field-tag optional">Optional</span></span>
@@ -312,6 +322,6 @@
       </section>
     </main>
     <script src="engine.js?v=20260526-1"></script>
-    <script src="app.js?v=20260526-1"></script>
+    <script src="app.js?v=20260603-1"></script>
   </body>
 </html>

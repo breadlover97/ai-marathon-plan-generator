@@ -57,6 +57,19 @@ const stepRequirements = [
   [],
 ];
 
+const preferenceLabels = {
+  trainingVolume: {
+    gradual: "Gradual",
+    steady: "Steady",
+    progressive: "Progressive",
+  },
+  difficulty: {
+    comfortable: "Comfortable",
+    balanced: "Balanced",
+    challenging: "Challenging",
+  },
+};
+
 function init() {
   form.addEventListener("submit", handleSubmit);
   document.querySelector("#load-example").addEventListener("click", loadExample);
@@ -304,9 +317,13 @@ function renderReview() {
     ["Dates", profile.startDate && profile.raceDate ? `${profile.startDate} to ${profile.raceDate}` : "Missing"],
     ["Current running", profile.currentWeeklyKm && profile.longestRecentRunKm ? `${profile.currentWeeklyKm} km/week, ${profile.longestRecentRunKm} km long run` : "Missing"],
     ["Schedule", profile.workoutDay && profile.mediumLongDay && profile.longRunDay ? `Workout ${profile.workoutDay}, medium-long ${profile.mediumLongDay}, long run ${profile.longRunDay}` : "Missing"],
-    ["Training style", profile.trainingVolume && profile.difficulty ? `${profile.trainingVolume}, ${profile.difficulty}` : "Missing"],
+    ["Training style", profile.trainingVolume && profile.difficulty ? `${preferenceLabel("trainingVolume", profile.trainingVolume)}, ${preferenceLabel("difficulty", profile.difficulty)}` : "Missing"],
   ];
   reviewPanel.innerHTML = rows.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+}
+
+function preferenceLabel(group, value) {
+  return preferenceLabels[group]?.[value] || value;
 }
 
 function renderSummary(plan) {
