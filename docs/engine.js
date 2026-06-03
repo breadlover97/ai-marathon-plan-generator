@@ -28,6 +28,36 @@
     challenging: 0.65,
   };
 
+  const ABILITY_RANK = {
+    beginner: 0,
+    intermediate: 1,
+    advanced: 2,
+    elite: 3,
+    elite_plus: 4,
+  };
+
+  const WORKOUT_LOAD = {
+    beginner: { share: 0.14, floor: 4, cap: 7.5 },
+    intermediate: { share: 0.17, floor: 5.5, cap: 11 },
+    advanced: { share: 0.2, floor: 7, cap: 16 },
+    elite: { share: 0.21, floor: 8, cap: 18 },
+    elite_plus: { share: 0.22, floor: 9, cap: 20 },
+  };
+
+  const MEDIUM_LONG_LOAD = {
+    beginner: { share: 0.16, floor: 6, cap: 12 },
+    intermediate: { share: 0.17, floor: 7, cap: 15 },
+    advanced: { share: 0.18, floor: 8, cap: 18 },
+    elite: { share: 0.19, floor: 9, cap: 20 },
+    elite_plus: { share: 0.2, floor: 10, cap: 22 },
+  };
+
+  const DIFFICULTY_WORKOUT_MULTIPLIER = {
+    comfortable: 0.85,
+    balanced: 0.95,
+    challenging: 1,
+  };
+
   const LONG_RUN_TARGET_SHARE = 0.43;
   const LONG_RUN_MAX_SHARE = 0.46;
   const LONG_RUN_HARD_CAP_KM = MARATHON_KM * 0.82;
@@ -139,6 +169,10 @@
       } else if (maxLongRunKm > LONG_RUN_HARD_CAP_KM) {
         warnings.push(`Max long run capped at ${formatDistance(roundDistance(LONG_RUN_HARD_CAP_KM))} km for marathon safety.`);
       }
+    }
+
+    if (profile.runningAbility === "beginner" && profile.difficulty === "challenging") {
+      warnings.push("Beginner plans keep workouts conservative even when difficulty is challenging.");
     }
 
     if (profile.injuryNotes) {
@@ -298,7 +332,7 @@
     const workoutDay = profile.workoutDay || "Monday";
     const mediumLongDay = profile.mediumLongDay || "Wednesday";
     const longRunDay = profile.longRunDay || "Saturday";
-    if (!raceWeek || workoutDay !== raceDay) dayTypes[workoutDay] = workoutType(phase, weekNumber, raceWeek);
+    if (!raceWeek || workoutDay !== raceDay) dayTypes[workoutDay] = workoutType(profile, phase, weekNumber, raceWeek);
     if (!raceWeek || mediumLongDay !== raceDay) dayTypes[mediumLongDay] = raceWeek ? "Easy Run" : "Medium-Long";
     if (raceWeek) {
       dayTypes[raceDay] = "Race";
@@ -320,9 +354,8 @@
       runDays.push(candidate);
     }
 
-    const workoutKm = raceWeek ? Math.min(6, Math.max(4, targetKm - longKm)) : Math.max(7, Math.min(targetKm * 0.2, 16));
-    let mediumKm = raceWeek ? 0 : Math.max(8, Math.min(targetKm * 0.18, 18));
-    if (Number(profile.runsPerWeek) <= 4) mediumKm *= 0.75;
+    const workoutKm = workoutDistance(profile, targetKm, longKm, raceWeek);
+    const mediumKm = mediumLongDistance(profile, targetKm, raceWeek);
     const easyBudget = Math.max(targetKm - longKm - workoutKm - mediumKm, 0);
     const easyDays = runDays.filter((day) => dayTypes[day] === "Easy Run");
     const easyKm = roundKm(easyBudget / Math.max(easyDays.length, 1));
@@ -331,13 +364,13 @@
       const sessionType = dayTypes[day];
       if (sessionType === "Rest") return session(day, "Rest", "Full rest", 0);
       if (sessionType === "Strength") return session(day, "Strength", strengthPlan(profile), 0);
-      if (sessionType === "Medium-Long") return session(day, sessionType, mediumLongPlan(phase), roundKm(mediumKm));
+      if (sessionType === "Medium-Long") return session(day, sessionType, mediumLongPlan(profile, phase), roundKm(mediumKm));
       if (["Long Run", "Race"].includes(sessionType)) {
         const plannedKm = sessionType === "Race" ? round1(longKm) : roundDistance(longKm);
         return session(day, sessionType, longRunPlan(profile, phase, weekNumber, totalWeeks, longKm, goalPace), plannedKm);
       }
       if (sessionType === "Easy Run") return session(day, sessionType, weekNumber % 2 ? "Easy aerobic + 6 strides" : "Easy aerobic", easyKm);
-      return session(day, sessionType, workoutPlan(sessionType, goalPace), roundKm(workoutKm));
+      return session(day, sessionType, workoutPlan(profile, sessionType, goalPace), roundKm(workoutKm));
     });
   }
 
@@ -353,31 +386,89 @@
     return "Race Specific";
   }
 
-  function workoutType(phase, weekNumber, raceWeek) {
+  function workoutDistance(profile, targetKm, longKm, raceWeek) {
+    if (raceWeek) return Math.min(6, Math.max(4, targetKm - longKm));
+    const load = WORKOUT_LOAD[profile.runningAbility || "intermediate"];
+    const multiplier = DIFFICULTY_WORKOUT_MULTIPLIER[profile.difficulty || "balanced"];
+    const scaled = targetKm * load.share * multiplier;
+    return Math.max(load.floor, Math.min(scaled, load.cap));
+  }
+
+  function mediumLongDistance(profile, targetKm, raceWeek) {
+    if (raceWeek) return 0;
+    const load = MEDIUM_LONG_LOAD[profile.runningAbility || "intermediate"];
+    let mediumKm = Math.max(load.floor, Math.min(targetKm * load.share, load.cap));
+    if (Number(profile.runsPerWeek) <= 4) mediumKm *= 0.75;
+    return mediumKm;
+  }
+
+  function workoutType(profile, phase, weekNumber, raceWeek) {
     if (raceWeek) return "Sharpen";
+    if (profile.runningAbility === "beginner") {
+      if (phase === "Base Build") return cycle(["Easy Strides", "Short Fartlek", "Steady Intro"], weekNumber);
+      if (phase === "Marathon Build") return cycle(["Short Fartlek", "Hill Strides", "Steady Intro"], weekNumber);
+      if (phase === "Race Specific") return cycle(["Marathon Rhythm", "Short Fartlek", "Easy Strides"], weekNumber);
+      return "Easy Strides";
+    }
+    if (profile.difficulty === "comfortable") {
+      if (phase === "Base Build") return cycle(["Easy Strides", "Steady Intro", "Short Fartlek"], weekNumber);
+      if (phase === "Marathon Build") return cycle(["Steady Intro", "Hill Strides", "Tempo"], weekNumber);
+      if (phase === "Race Specific") return cycle(["Marathon Rhythm", "Steady Intro", "Easy Strides"], weekNumber);
+      return "Sharpen";
+    }
+    if (profile.runningAbility === "intermediate") {
+      if (phase === "Base Build") return cycle(["Easy Strides", "Tempo", "Steady-State"], weekNumber);
+      if (phase === "Marathon Build") return cycle(["Threshold", "Tempo", "Hill Repeats", "Short Fartlek"], weekNumber);
+      if (phase === "Race Specific") return cycle(["Marathon Pace", "Tempo", "Threshold"], weekNumber);
+      return "Sharpen";
+    }
     if (phase === "Base Build") return ["Threshold", "Tempo", "Steady-State"][weekNumber % 3];
     if (phase === "Marathon Build") return ["Intervals", "Tempo", "Hill Repeats", "Threshold"][weekNumber % 4];
     if (phase === "Race Specific") return ["Marathon Pace", "Tempo", "Intervals"][weekNumber % 3];
     return "Sharpen";
   }
 
-  function workoutPlan(sessionType, goalPace) {
+  function cycle(items, weekNumber) {
+    return items[(weekNumber - 1) % items.length];
+  }
+
+  function workoutPlan(profile, sessionType, goalPace) {
     const easyBand = paceBand(goalPace, 1.25, 1.45);
     const tempoBand = paceBand(goalPace, 0.92, 0.97);
     const intervalBand = paceBand(goalPace, 0.85, 0.9);
+    const rank = ABILITY_RANK[profile.runningAbility || "intermediate"];
+    const conservative = rank <= 1 || profile.difficulty === "comfortable";
     const plans = {
-      Threshold: `WU + 4 x 2 km controlled threshold, jog recoveries, CD (${tempoBand})`,
-      Tempo: `WU + 3 x 15 min tempo, 4 min jog, CD (${tempoBand})`,
-      "Steady-State": `WU + 2 x 20 min steady, 5 min jog, CD (${easyBand})`,
-      Intervals: `WU + 8 x 800 m controlled reps, 400 m jog, CD (${intervalBand})`,
-      "Hill Repeats": "WU + 10 x 75 sec uphill strong, jog down, CD (RPE-based)",
-      "Marathon Pace": `WU + 3 x 5 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`,
+      "Easy Strides": `Easy run + 6 x 20 sec relaxed strides, full easy recoveries (${easyBand})`,
+      "Short Fartlek": "WU + 8 x 1 min gently quicker, 2 min easy, CD (RPE 5-6/10)",
+      "Steady Intro": `WU + 3 x 5 min steady, 3 min easy, CD (${easyBand})`,
+      "Hill Strides": "Easy run + 6 x 20 sec relaxed hill strides, walk/jog down",
+      "Marathon Rhythm": `WU + 3 x 5 min comfortable marathon rhythm, 3 min easy, CD (${goalPace || "RPE 5-6/10"})`,
+      Threshold: conservative
+        ? `WU + 5 x 3 min controlled threshold, 2 min easy, CD (${tempoBand})`
+        : profile.difficulty === "balanced"
+          ? `WU + 3 x 1.5 km controlled threshold, jog recoveries, CD (${tempoBand})`
+          : `WU + 4 x 2 km controlled threshold, jog recoveries, CD (${tempoBand})`,
+      Tempo: conservative
+        ? `WU + 3 x 6 min controlled steady effort, 3 min easy, CD (${tempoBand})`
+        : profile.difficulty === "balanced"
+          ? `WU + 2 x 12 min tempo, 4 min jog, CD (${tempoBand})`
+          : `WU + 3 x 15 min tempo, 4 min jog, CD (${tempoBand})`,
+      "Steady-State": conservative ? `WU + 3 x 8 min steady, 3 min jog, CD (${easyBand})` : `WU + 2 x 20 min steady, 5 min jog, CD (${easyBand})`,
+      Intervals: conservative ? `WU + 6 x 400 m controlled, 400 m easy, CD (${intervalBand})` : `WU + 8 x 800 m controlled reps, 400 m jog, CD (${intervalBand})`,
+      "Hill Repeats": conservative ? "WU + 8 x 45 sec uphill controlled, jog down, CD (RPE-based)" : "WU + 10 x 75 sec uphill strong, jog down, CD (RPE-based)",
+      "Marathon Pace": conservative
+        ? `WU + 3 x 8 min marathon rhythm, 3 min easy, CD (${goalPace || "RPE 6/10"})`
+        : profile.difficulty === "balanced"
+          ? `WU + 2 x 4 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`
+          : `WU + 3 x 5 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`,
       Sharpen: "Short easy run + 6 relaxed strides",
     };
     return plans[sessionType] || "Controlled quality session";
   }
 
-  function mediumLongPlan(phase) {
+  function mediumLongPlan(profile, phase) {
+    if (profile.runningAbility === "beginner" || profile.difficulty === "comfortable") return "Medium-long easy, conversational throughout";
     if (phase === "Race Specific") return "Medium-long easy with last 20 min steady if fresh";
     if (phase === "Taper") return "Reduced medium-long, relaxed and conversational";
     return "Medium-long easy, finish relaxed";
@@ -386,12 +477,20 @@
   function longRunPlan(profile, phase, weekNumber, totalWeeks, distance, goalPace) {
     if (weekNumber === totalWeeks) return `${round1(MARATHON_KM)} km race day: execute rehearsed fueling and pacing`;
     if (phase === "Base Build") return `${formatDistance(distance)} km easy, no pace pressure`;
+    if (profile.runningAbility === "beginner" || profile.difficulty === "comfortable") {
+      if (phase === "Marathon Build" || phase === "Race Specific") return `${formatDistance(distance)} km easy with fueling practice; keep the finish relaxed`;
+      return `${formatDistance(distance)} km easy, conversational throughout`;
+    }
     const qualityShare = DIFFICULTY_LONG_RUN_QUALITY[profile.difficulty || "balanced"];
     if (phase === "Race Specific" && weekNumber % 2 === 1) {
-      const mpBlock = Math.max(6, Math.round(distance * qualityShare * 0.35));
+      const minimumBlock = ABILITY_RANK[profile.runningAbility || "intermediate"] <= 1 ? 4 : 6;
+      const mpBlock = Math.max(minimumBlock, Math.round(distance * qualityShare * 0.35));
       return `${formatDistance(distance)} km with ${mpBlock} km total at marathon effort (${goalPace || "RPE 6-7/10"})`;
     }
-    if (weekNumber % 3 === 0) return `${formatDistance(distance)} km progression, last 5 km steady`;
+    if (weekNumber % 3 === 0) {
+      const steadyFinish = ABILITY_RANK[profile.runningAbility || "intermediate"] <= 1 ? 3 : 5;
+      return `${formatDistance(distance)} km progression, last ${steadyFinish} km steady`;
+    }
     return `${formatDistance(distance)} km easy with fueling test`;
   }
 

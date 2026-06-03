@@ -21,6 +21,12 @@ For a marathon plan of 16-26 weeks:
 - Specific: marathon-pace work, fueling practice, long-run quality.
 - Taper: reduce volume, keep controlled intensity, arrive fresh.
 
+Ability and difficulty adjust what "quality" means:
+
+- Beginner plans start with relaxed strides, short fartlek, and short steady introductions instead of formal tempo, threshold, or interval workouts.
+- Comfortable plans keep workouts controlled even for stronger runners; challenging plans may use longer tempo, threshold, interval, or marathon-pace blocks only when the ability profile can support them.
+- Beginner long runs stay easy, with fueling practice added before pace-specific long-run quality.
+
 ## Weekly structure
 
 Default structure, matching the provided sheet:
@@ -57,8 +63,8 @@ General limits:
 The generator uses these rough shares for a 5-run week:
 
 - Long run: 35-42% of weekly distance.
-- Main quality workout: 16-22%.
-- Medium-long run: 16-20%.
+- Main quality workout: 14-22%, with beginner plans near the lower end.
+- Medium-long run: 16-20%, with lower floors for beginner and lower-frequency plans.
 - Easy runs: remaining distance.
 - Strength sessions: 0 km, scheduled away from the hardest run days where possible.
 
@@ -74,6 +80,12 @@ Paces are anchored to target marathon pace or a predicted marathon pace from a r
 
 The product should let users switch to RPE when terrain, heat, or fatigue makes exact pace less useful.
 
+For beginner profiles, early quality sessions should be described mainly by RPE and feel:
+
+- Strides: relaxed, fast-but-smooth, full easy recovery.
+- Short fartlek: gently quicker, never straining.
+- Steady intro: controlled, able to settle back to easy running quickly.
+
 ## Long-run model
 
 Long runs rotate through:
@@ -83,7 +95,7 @@ Long runs rotate through:
 - steady blocks
 - race-pace practice
 
-Race-pace long runs appear mainly in the specific phase and are scaled down for comfortable or injury-risk profiles.
+Race-pace long runs appear mainly in the specific phase and are scaled down for intermediate runners. Beginner and comfortable profiles should stay easy-first and use long runs for durability and fueling practice before pace pressure.
 
 ## Strength model
 
@@ -94,4 +106,3 @@ For marathon training:
 - 3 sessions per week: only if recovery and time are strong.
 
 For race-focused plans, prioritize legs, calves, glutes, core, and mobility.
-

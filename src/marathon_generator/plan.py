@@ -37,6 +37,36 @@ DIFFICULTY_LONG_RUN_QUALITY = {
     Difficulty.CHALLENGING: 0.65,
 }
 
+ABILITY_RANK = {
+    RunningAbility.BEGINNER: 0,
+    RunningAbility.INTERMEDIATE: 1,
+    RunningAbility.ADVANCED: 2,
+    RunningAbility.ELITE: 3,
+    RunningAbility.ELITE_PLUS: 4,
+}
+
+WORKOUT_LOAD = {
+    RunningAbility.BEGINNER: {"share": 0.14, "floor": 4, "cap": 7.5},
+    RunningAbility.INTERMEDIATE: {"share": 0.17, "floor": 5.5, "cap": 11},
+    RunningAbility.ADVANCED: {"share": 0.20, "floor": 7, "cap": 16},
+    RunningAbility.ELITE: {"share": 0.21, "floor": 8, "cap": 18},
+    RunningAbility.ELITE_PLUS: {"share": 0.22, "floor": 9, "cap": 20},
+}
+
+MEDIUM_LONG_LOAD = {
+    RunningAbility.BEGINNER: {"share": 0.16, "floor": 6, "cap": 12},
+    RunningAbility.INTERMEDIATE: {"share": 0.17, "floor": 7, "cap": 15},
+    RunningAbility.ADVANCED: {"share": 0.18, "floor": 8, "cap": 18},
+    RunningAbility.ELITE: {"share": 0.19, "floor": 9, "cap": 20},
+    RunningAbility.ELITE_PLUS: {"share": 0.20, "floor": 10, "cap": 22},
+}
+
+DIFFICULTY_WORKOUT_MULTIPLIER = {
+    Difficulty.COMFORTABLE: 0.85,
+    Difficulty.BALANCED: 0.95,
+    Difficulty.CHALLENGING: 1.0,
+}
+
 LONG_RUN_TARGET_SHARE = 0.43
 LONG_RUN_MAX_SHARE = 0.46
 LONG_RUN_HARD_CAP_KM = MARATHON_KM * 0.82
@@ -152,6 +182,8 @@ def _validate_profile(profile: RunnerProfile) -> list[str]:
         raise ValueError(f"max_long_run_km must be at least {MIN_LONG_RUN_CAP_KM:g} km")
     if profile.max_long_run_km and profile.max_long_run_km > LONG_RUN_HARD_CAP_KM:
         warnings.append(f"Max long run capped at {_round_distance(LONG_RUN_HARD_CAP_KM):g} km for marathon safety.")
+    if profile.running_ability == RunningAbility.BEGINNER and profile.difficulty == Difficulty.CHALLENGING:
+        warnings.append("Beginner plans keep workouts conservative even when difficulty is challenging.")
     if profile.longest_recent_run_km > profile.current_weekly_km * 0.75:
         warnings.append("Longest recent run is high relative to weekly distance. Build weeks will stay conservative.")
     days = {profile.workout_day, profile.medium_long_day, profile.long_run_day, *profile.strength_days, *profile.rest_days}
@@ -265,7 +297,7 @@ def _sessions_for_week(
     race_day = WEEKDAYS[profile.race_date.weekday()] if race_week else None
     day_types = {day: "Rest" for day in WEEKDAYS}
     if not race_week or profile.workout_day != race_day:
-        day_types[profile.workout_day] = _workout_type(phase, week_number, race_week)
+        day_types[profile.workout_day] = _workout_type(profile, phase, week_number, race_week)
     if not race_week or profile.medium_long_day != race_day:
         day_types[profile.medium_long_day] = "Easy Run" if race_week else "Medium-Long"
     if race_week:
@@ -291,10 +323,8 @@ def _sessions_for_week(
         else:
             break
 
-    workout_km = min(6, max(4, target_km - long_km)) if race_week else max(7, min(target_km * 0.20, 16))
-    medium_km = 0 if race_week else max(8, min(target_km * 0.18, 18))
-    if profile.runs_per_week <= 4:
-        medium_km *= 0.75
+    workout_km = _workout_distance(profile, target_km, long_km, race_week)
+    medium_km = _medium_long_distance(profile, target_km, race_week)
     easy_budget = max(target_km - long_km - workout_km - medium_km, 0)
     easy_days = [day for day in run_days if day_types[day] == "Easy Run"]
     easy_km = round(easy_budget / max(len(easy_days), 1), 1)
@@ -307,13 +337,13 @@ def _sessions_for_week(
         elif session_type == "Strength":
             sessions.append(Session(day, "Strength", _strength_plan(profile), 0))
         elif session_type == "Medium-Long":
-            sessions.append(Session(day, session_type, _medium_long_plan(phase), round(medium_km, 1)))
+            sessions.append(Session(day, session_type, _medium_long_plan(profile, phase), round(medium_km, 1)))
         elif session_type in {"Long Run", "Race"}:
             sessions.append(Session(day, session_type, _long_run_plan(profile, phase, week_number, total_weeks, long_km, goal_pace), round(long_km, 1)))
         elif session_type == "Easy Run":
             sessions.append(Session(day, session_type, _easy_plan(week_number), easy_km))
         else:
-            sessions.append(Session(day, session_type, _workout_plan(session_type, phase, goal_pace), round(workout_km, 1)))
+            sessions.append(Session(day, session_type, _workout_plan(profile, session_type, phase, goal_pace), round(workout_km, 1)))
     return sessions
 
 
@@ -328,8 +358,50 @@ def _phase_for_week(week_number: int, total_weeks: int) -> str:
     return "Race Specific"
 
 
-def _workout_type(phase: str, week_number: int, race_week: bool) -> str:
+def _workout_distance(profile: RunnerProfile, target_km: float, long_km: float, race_week: bool) -> float:
     if race_week:
+        return min(6, max(4, target_km - long_km))
+    load = WORKOUT_LOAD[profile.running_ability]
+    scaled = target_km * load["share"] * DIFFICULTY_WORKOUT_MULTIPLIER[profile.difficulty]
+    return max(load["floor"], min(scaled, load["cap"]))
+
+
+def _medium_long_distance(profile: RunnerProfile, target_km: float, race_week: bool) -> float:
+    if race_week:
+        return 0
+    load = MEDIUM_LONG_LOAD[profile.running_ability]
+    medium_km = max(load["floor"], min(target_km * load["share"], load["cap"]))
+    if profile.runs_per_week <= 4:
+        medium_km *= 0.75
+    return medium_km
+
+
+def _workout_type(profile: RunnerProfile, phase: str, week_number: int, race_week: bool) -> str:
+    if race_week:
+        return "Sharpen"
+    if profile.running_ability == RunningAbility.BEGINNER:
+        if phase == "Base Build":
+            return _cycle(["Easy Strides", "Short Fartlek", "Steady Intro"], week_number)
+        if phase == "Marathon Build":
+            return _cycle(["Short Fartlek", "Hill Strides", "Steady Intro"], week_number)
+        if phase == "Race Specific":
+            return _cycle(["Marathon Rhythm", "Short Fartlek", "Easy Strides"], week_number)
+        return "Easy Strides"
+    if profile.difficulty == Difficulty.COMFORTABLE:
+        if phase == "Base Build":
+            return _cycle(["Easy Strides", "Steady Intro", "Short Fartlek"], week_number)
+        if phase == "Marathon Build":
+            return _cycle(["Steady Intro", "Hill Strides", "Tempo"], week_number)
+        if phase == "Race Specific":
+            return _cycle(["Marathon Rhythm", "Steady Intro", "Easy Strides"], week_number)
+        return "Sharpen"
+    if profile.running_ability == RunningAbility.INTERMEDIATE:
+        if phase == "Base Build":
+            return _cycle(["Easy Strides", "Tempo", "Steady-State"], week_number)
+        if phase == "Marathon Build":
+            return _cycle(["Threshold", "Tempo", "Hill Repeats", "Short Fartlek"], week_number)
+        if phase == "Race Specific":
+            return _cycle(["Marathon Pace", "Tempo", "Threshold"], week_number)
         return "Sharpen"
     if phase == "Base Build":
         return ["Threshold", "Tempo", "Steady-State"][week_number % 3]
@@ -340,21 +412,55 @@ def _workout_type(phase: str, week_number: int, race_week: bool) -> str:
     return "Sharpen"
 
 
-def _workout_plan(session_type: str, phase: str, goal_pace: str | None) -> str:
+def _cycle(items: list[str], week_number: int) -> str:
+    return items[(week_number - 1) % len(items)]
+
+
+def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pace: str | None) -> str:
     easy_band = pace_band(goal_pace, 1.25, 1.45)
     tempo_band = pace_band(goal_pace, 0.92, 0.97)
     interval_band = pace_band(goal_pace, 0.85, 0.90)
+    rank = ABILITY_RANK[profile.running_ability]
+    conservative = rank <= 1 or profile.difficulty == Difficulty.COMFORTABLE
+    if session_type == "Easy Strides":
+        return f"Easy run + 6 x 20 sec relaxed strides, full easy recoveries ({easy_band})"
+    if session_type == "Short Fartlek":
+        return "WU + 8 x 1 min gently quicker, 2 min easy, CD (RPE 5-6/10)"
+    if session_type == "Steady Intro":
+        return f"WU + 3 x 5 min steady, 3 min easy, CD ({easy_band})"
+    if session_type == "Hill Strides":
+        return "Easy run + 6 x 20 sec relaxed hill strides, walk/jog down"
+    if session_type == "Marathon Rhythm":
+        return f"WU + 3 x 5 min comfortable marathon rhythm, 3 min easy, CD ({goal_pace or 'RPE 5-6/10'})"
     if session_type == "Threshold":
+        if conservative:
+            return f"WU + 5 x 3 min controlled threshold, 2 min easy, CD ({tempo_band})"
+        if profile.difficulty == Difficulty.BALANCED:
+            return f"WU + 3 x 1.5 km controlled threshold, jog recoveries, CD ({tempo_band})"
         return f"WU + 4 x 2 km controlled threshold, jog recoveries, CD ({tempo_band})"
     if session_type == "Tempo":
+        if conservative:
+            return f"WU + 3 x 6 min controlled steady effort, 3 min easy, CD ({tempo_band})"
+        if profile.difficulty == Difficulty.BALANCED:
+            return f"WU + 2 x 12 min tempo, 4 min jog, CD ({tempo_band})"
         return f"WU + 3 x 15 min tempo, 4 min jog, CD ({tempo_band})"
     if session_type == "Steady-State":
+        if conservative:
+            return f"WU + 3 x 8 min steady, 3 min jog, CD ({easy_band})"
         return f"WU + 2 x 20 min steady, 5 min jog, CD ({easy_band})"
     if session_type == "Intervals":
+        if conservative:
+            return f"WU + 6 x 400 m controlled, 400 m easy, CD ({interval_band})"
         return f"WU + 8 x 800 m controlled reps, 400 m jog, CD ({interval_band})"
     if session_type == "Hill Repeats":
+        if conservative:
+            return "WU + 8 x 45 sec uphill controlled, jog down, CD (RPE-based)"
         return "WU + 10 x 75 sec uphill strong, jog down, CD (RPE-based)"
     if session_type == "Marathon Pace":
+        if conservative:
+            return f"WU + 3 x 8 min marathon rhythm, 3 min easy, CD ({goal_pace or 'RPE 6/10'})"
+        if profile.difficulty == Difficulty.BALANCED:
+            return f"WU + 2 x 4 km at marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
         return f"WU + 3 x 5 km at marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
     if session_type == "Sharpen":
         return "Short easy run + 6 relaxed strides"
@@ -365,7 +471,9 @@ def _easy_plan(week_number: int) -> str:
     return "Easy aerobic + 6 strides" if week_number % 2 else "Easy aerobic"
 
 
-def _medium_long_plan(phase: str) -> str:
+def _medium_long_plan(profile: RunnerProfile, phase: str) -> str:
+    if profile.running_ability == RunningAbility.BEGINNER or profile.difficulty == Difficulty.COMFORTABLE:
+        return "Medium-long easy, conversational throughout"
     if phase == "Race Specific":
         return "Medium-long easy with last 20 min steady if fresh"
     if phase == "Taper":
@@ -378,12 +486,18 @@ def _long_run_plan(profile: RunnerProfile, phase: str, week_number: int, total_w
         return f"Race day: {MARATHON_KM:.1f} km, execute fueling and pacing"
     if phase == "Base Build":
         return f"{_format_km(distance)} km easy, no pace pressure"
+    if profile.running_ability == RunningAbility.BEGINNER or profile.difficulty == Difficulty.COMFORTABLE:
+        if phase in {"Marathon Build", "Race Specific"}:
+            return f"{_format_km(distance)} km easy with fueling practice; keep the finish relaxed"
+        return f"{_format_km(distance)} km easy, conversational throughout"
     quality_share = DIFFICULTY_LONG_RUN_QUALITY[profile.difficulty]
     if phase == "Race Specific" and week_number % 2 == 1:
-        mp_block = max(6, round(distance * quality_share * 0.35))
+        minimum_block = 4 if ABILITY_RANK[profile.running_ability] <= 1 else 6
+        mp_block = max(minimum_block, round(distance * quality_share * 0.35))
         return f"{_format_km(distance)} km with {mp_block} km total at marathon effort ({goal_pace or 'RPE 6-7/10'})"
     if week_number % 3 == 0:
-        return f"{_format_km(distance)} km progression, last 5 km steady"
+        steady_finish = 3 if ABILITY_RANK[profile.running_ability] <= 1 else 5
+        return f"{_format_km(distance)} km progression, last {steady_finish} km steady"
     return f"{_format_km(distance)} km easy with fueling test"
 
 

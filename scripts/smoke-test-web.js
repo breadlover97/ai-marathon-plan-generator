@@ -58,6 +58,37 @@ assert.ok(engine.planToCsv(plan).includes('"","Marathon Training Plan"'));
 assert.ok(!/\b(Focus|Fuel|Risk|Adjust)\b/.test(tsv));
 assert.equal((tsv.match(/\bAdmin\b/g) || []).length, 1);
 
+const beginnerProfile = {
+  ...profile,
+  athleteName: "New Runner",
+  raceName: "First Marathon",
+  goalTime: "",
+  goalDescription: "Finish comfortably",
+  currentWeeklyKm: 24,
+  longestRecentRunKm: 10,
+  currentMarathonPace: "",
+  runsPerWeek: 4,
+  runningAbility: "beginner",
+  trainingVolume: "gradual",
+  difficulty: "balanced",
+  maxLongRunKm: "",
+  primaryRisks: "",
+  raceSpecifics: "",
+  fuelNotes: "",
+  adminNotes: "",
+  constraints: "",
+};
+const beginnerPlan = engine.buildTrainingPlan(beginnerProfile);
+assert.equal(beginnerPlan.validation.errors.length, 0);
+const beginnerWorkout = beginnerPlan.weeks[0].sessions.find((session) => !["Rest", "Strength", "Easy Run", "Medium-Long", "Long Run"].includes(session.sessionType));
+assert.equal(beginnerWorkout.sessionType, "Easy Strides");
+assert.ok(beginnerWorkout.plannedKm <= 5);
+assert.ok(beginnerWorkout.plan.includes("relaxed strides"));
+const beginnerText = beginnerPlan.weeks.flatMap((week) => week.sessions).map((session) => session.plan).join("\n");
+for (const phrase of ["3 x 15 min tempo", "4 x 2 km controlled threshold", "8 x 800 m", "3 x 5 km at marathon effort", "progression, last 5 km steady"]) {
+  assert.ok(!beginnerText.includes(phrase), `beginner plan should not include ${phrase}`);
+}
+
 const invalid = engine.buildTrainingPlan({ ...profile, raceName: "", currentWeeklyKm: 0 });
 assert.ok(invalid.validation.errors.length >= 2);
 
