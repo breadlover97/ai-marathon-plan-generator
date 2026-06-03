@@ -28,6 +28,11 @@
     challenging: 0.65,
   };
 
+  const LONG_RUN_TARGET_SHARE = 0.43;
+  const LONG_RUN_MAX_SHARE = 0.46;
+  const LONG_RUN_HARD_CAP_KM = MARATHON_KM * 0.82;
+  const MIN_LONG_RUN_CAP_KM = 10;
+
   function parseDate(value) {
     const [year, month, day] = value.split("-").map(Number);
     return new Date(Date.UTC(year, month - 1, day));
@@ -41,6 +46,11 @@
 
   function isoDate(date) {
     return date.toISOString().slice(0, 10);
+  }
+
+  function weekdayNameFromDate(value) {
+    const date = typeof value === "string" ? parseDate(value) : value;
+    return WEEKDAYS[(date.getUTCDay() + 6) % 7];
   }
 
   function formatShortDate(date) {
@@ -106,13 +116,29 @@
       errors.push("Workout, medium-long, and long-run days must be different.");
     }
 
+    const strengthDays = new Set(profile.strengthDays || []);
+    const restDays = new Set(profile.restDays || []);
     for (const day of keyDays) {
-      if ((profile.restDays || []).includes(day)) errors.push("Key run days cannot also be rest days.");
-      if ((profile.strengthDays || []).includes(day)) errors.push("Key run days cannot also be strength-only days.");
+      if (restDays.has(day)) errors.push("Key run days cannot also be rest days.");
+      if (strengthDays.has(day)) errors.push("Key run days cannot also be strength-only days.");
+    }
+
+    const availableRunDays = WEEKDAYS.filter((day) => !restDays.has(day) && !strengthDays.has(day)).length;
+    if (Number(profile.runsPerWeek) > availableRunDays) {
+      errors.push("Runs per week exceeds available run days after rest and strength days.");
     }
 
     if (profile.currentWeeklyKm && profile.longestRecentRunKm && Number(profile.longestRecentRunKm) > Number(profile.currentWeeklyKm) * 0.75) {
       warnings.push("Your longest recent run is high relative to weekly distance. The plan will keep build weeks conservative.");
+    }
+
+    if (hasMaxLongRunCap(profile)) {
+      const maxLongRunKm = Number(profile.maxLongRunKm);
+      if (!Number.isFinite(maxLongRunKm) || maxLongRunKm < MIN_LONG_RUN_CAP_KM) {
+        errors.push(`Max long run must be at least ${MIN_LONG_RUN_CAP_KM} km.`);
+      } else if (maxLongRunKm > LONG_RUN_HARD_CAP_KM) {
+        warnings.push(`Max long run capped at ${formatDistance(roundDistance(LONG_RUN_HARD_CAP_KM))} km for marathon safety.`);
+      }
     }
 
     if (profile.injuryNotes) {
@@ -163,6 +189,16 @@
       });
     }
 
+    const preRaceLongRuns = weeks
+      .flatMap((week) => week.sessions)
+      .filter((session) => session.sessionType === "Long Run")
+      .map((session) => Number(session.plannedKm || 0));
+    const peakLongRunKm = preRaceLongRuns.length ? Math.max(...preRaceLongRuns) : 0;
+    const effectiveCapKm = roundDistance(effectiveLongRunCap(profile));
+    if (hasMaxLongRunCap(profile) && peakLongRunKm < effectiveCapKm - 0.1) {
+      validation.warnings.push(`Peak long run is ${formatDistance(peakLongRunKm)} km because the weekly volume cap could not safely support ${formatDistance(effectiveCapKm)} km.`);
+    }
+
     const peakKm = Math.max(...weeks.map((week) => week.targetKm));
     return {
       profile,
@@ -174,7 +210,8 @@
         peakKm,
         startKm: weeks[0].targetKm,
         raceWeekKm: weeks[weeks.length - 1].targetKm,
-        longRunCapKm: Number(profile.maxLongRunKm) || defaultLongRunCap(profile),
+        longRunCapKm: effectiveCapKm,
+        peakLongRunKm,
       },
     };
   }
@@ -185,7 +222,8 @@
     const volume = profile.trainingVolume || "steady";
     const peakCap = ABILITY_PEAK_KM[ability] * VOLUME_MULTIPLIER[volume];
     const naturalPeak = current * (totalWeeks >= 18 ? 1.45 : 1.25);
-    const peak = Math.min(peakCap, Math.max(current * 1.15, naturalPeak));
+    const longRunPeakFloor = effectiveLongRunCap(profile) / LONG_RUN_TARGET_SHARE;
+    const peak = Math.min(peakCap, Math.max(current * 1.15, naturalPeak, longRunPeakFloor));
     const start = Math.max(current * 0.95, current - 5);
     const taperWeeks = totalWeeks >= 16 ? 3 : 2;
     const buildWeeks = Math.max(totalWeeks - taperWeeks, 1);
@@ -196,7 +234,7 @@
       const progress = (week - 1) / Math.max(buildWeeks - 1, 1);
       const ideal = start + (peak - start) * progress;
       let target;
-      if (week % 4 === 0) {
+      if (week % 4 === 0 && week < buildWeeks) {
         target = Math.max(start * 0.92, lastBuild * 0.82);
       } else {
         target = Math.min(ideal, lastBuild * 1.08);
@@ -210,7 +248,7 @@
   }
 
   function longRunTargetsFor(profile, weeklyTargets, totalWeeks) {
-    const cap = Math.min(Number(profile.maxLongRunKm) || defaultLongRunCap(profile), MARATHON_KM * 0.82);
+    const cap = effectiveLongRunCap(profile);
     const recent = Number(profile.longestRecentRunKm);
     const start = Math.min(Math.max(recent + 3, recent * 1.1), cap);
     const taperWeeks = totalWeeks >= 16 ? 3 : 2;
@@ -222,16 +260,20 @@
       const progress = (week - 1) / Math.max(buildWeeks - 1, 1);
       const ideal = start + (cap - start) * progress;
       let target;
-      if (week % 4 === 0) {
+      if (week % 4 === 0 && week < buildWeeks) {
         target = Math.max(start * 0.85, lastBuild * 0.72);
       } else {
         target = Math.min(ideal, lastBuild + 2.5);
         lastBuild = target;
       }
-      longRuns.push(Math.round(Math.min(target, weeklyTargets[week - 1] * 0.43, cap)));
+      const weeklyLimit = weeklyTargets[week - 1] * LONG_RUN_MAX_SHARE;
+      if (week === buildWeeks && weeklyLimit >= cap) {
+        target = cap;
+      }
+      longRuns.push(roundDistance(Math.min(target, weeklyLimit, cap)));
     }
 
-    const taper = taperWeeks === 3 ? [Math.round(cap * 0.65), Math.round(cap * 0.45), MARATHON_KM] : [Math.round(cap * 0.5), MARATHON_KM];
+    const taper = taperWeeks === 3 ? [roundDistance(cap * 0.65), roundDistance(cap * 0.45), MARATHON_KM] : [roundDistance(cap * 0.5), MARATHON_KM];
     return longRuns.concat(taper).slice(0, totalWeeks);
   }
 
@@ -240,14 +282,35 @@
     return Math.min(MARATHON_KM * 0.8, ABILITY_PEAK_KM[ability] * 0.4);
   }
 
+  function effectiveLongRunCap(profile) {
+    const requestedCap = hasMaxLongRunCap(profile) ? Number(profile.maxLongRunKm) : defaultLongRunCap(profile);
+    return Math.min(requestedCap, LONG_RUN_HARD_CAP_KM);
+  }
+
+  function hasMaxLongRunCap(profile) {
+    return profile.maxLongRunKm !== null && profile.maxLongRunKm !== undefined && profile.maxLongRunKm !== "";
+  }
+
   function sessionsForWeek(profile, weekNumber, totalWeeks, phase, targetKm, longKm, goalPace) {
     const raceWeek = weekNumber === totalWeeks;
+    const raceDay = raceWeek ? weekdayNameFromDate(profile.raceDate) : null;
     const dayTypes = Object.fromEntries(WEEKDAYS.map((day) => [day, "Rest"]));
-    dayTypes[profile.workoutDay || "Monday"] = workoutType(phase, weekNumber, raceWeek);
-    dayTypes[profile.mediumLongDay || "Wednesday"] = "Medium-Long";
-    dayTypes[profile.longRunDay || "Saturday"] = raceWeek ? "Race" : "Long Run";
-    for (const day of profile.strengthDays || []) dayTypes[day] = "Strength";
-    for (const day of profile.restDays || []) dayTypes[day] = "Rest";
+    const workoutDay = profile.workoutDay || "Monday";
+    const mediumLongDay = profile.mediumLongDay || "Wednesday";
+    const longRunDay = profile.longRunDay || "Saturday";
+    if (!raceWeek || workoutDay !== raceDay) dayTypes[workoutDay] = workoutType(phase, weekNumber, raceWeek);
+    if (!raceWeek || mediumLongDay !== raceDay) dayTypes[mediumLongDay] = raceWeek ? "Easy Run" : "Medium-Long";
+    if (raceWeek) {
+      dayTypes[raceDay] = "Race";
+    } else {
+      dayTypes[longRunDay] = "Long Run";
+    }
+    for (const day of profile.strengthDays || []) {
+      if (day !== raceDay) dayTypes[day] = "Strength";
+    }
+    for (const day of profile.restDays || []) {
+      if (day !== raceDay) dayTypes[day] = "Rest";
+    }
 
     const runDays = WEEKDAYS.filter((day) => !["Rest", "Strength"].includes(dayTypes[day]));
     while (runDays.length < Number(profile.runsPerWeek)) {
@@ -257,7 +320,7 @@
       runDays.push(candidate);
     }
 
-    const workoutKm = raceWeek ? 0 : Math.max(7, Math.min(targetKm * 0.2, 16));
+    const workoutKm = raceWeek ? Math.min(6, Math.max(4, targetKm - longKm)) : Math.max(7, Math.min(targetKm * 0.2, 16));
     let mediumKm = raceWeek ? 0 : Math.max(8, Math.min(targetKm * 0.18, 18));
     if (Number(profile.runsPerWeek) <= 4) mediumKm *= 0.75;
     const easyBudget = Math.max(targetKm - longKm - workoutKm - mediumKm, 0);
@@ -269,7 +332,10 @@
       if (sessionType === "Rest") return session(day, "Rest", "Full rest", 0);
       if (sessionType === "Strength") return session(day, "Strength", strengthPlan(profile), 0);
       if (sessionType === "Medium-Long") return session(day, sessionType, mediumLongPlan(phase), roundKm(mediumKm));
-      if (["Long Run", "Race"].includes(sessionType)) return session(day, sessionType, longRunPlan(profile, phase, weekNumber, totalWeeks, longKm, goalPace), roundKm(longKm));
+      if (["Long Run", "Race"].includes(sessionType)) {
+        const plannedKm = sessionType === "Race" ? round1(longKm) : roundDistance(longKm);
+        return session(day, sessionType, longRunPlan(profile, phase, weekNumber, totalWeeks, longKm, goalPace), plannedKm);
+      }
       if (sessionType === "Easy Run") return session(day, sessionType, weekNumber % 2 ? "Easy aerobic + 6 strides" : "Easy aerobic", easyKm);
       return session(day, sessionType, workoutPlan(sessionType, goalPace), roundKm(workoutKm));
     });
@@ -318,15 +384,15 @@
   }
 
   function longRunPlan(profile, phase, weekNumber, totalWeeks, distance, goalPace) {
-    if (weekNumber === totalWeeks) return `${roundKm(MARATHON_KM)} km race day: execute rehearsed fueling and pacing`;
-    if (phase === "Base Build") return `${Math.round(distance)} km easy, no pace pressure`;
+    if (weekNumber === totalWeeks) return `${round1(MARATHON_KM)} km race day: execute rehearsed fueling and pacing`;
+    if (phase === "Base Build") return `${formatDistance(distance)} km easy, no pace pressure`;
     const qualityShare = DIFFICULTY_LONG_RUN_QUALITY[profile.difficulty || "balanced"];
     if (phase === "Race Specific" && weekNumber % 2 === 1) {
       const mpBlock = Math.max(6, Math.round(distance * qualityShare * 0.35));
-      return `${Math.round(distance)} km with ${mpBlock} km total at marathon effort (${goalPace || "RPE 6-7/10"})`;
+      return `${formatDistance(distance)} km with ${mpBlock} km total at marathon effort (${goalPace || "RPE 6-7/10"})`;
     }
-    if (weekNumber % 3 === 0) return `${Math.round(distance)} km progression, last 5 km steady`;
-    return `${Math.round(distance)} km easy with fueling test`;
+    if (weekNumber % 3 === 0) return `${formatDistance(distance)} km progression, last 5 km steady`;
+    return `${formatDistance(distance)} km easy with fueling test`;
   }
 
   function strengthPlan(profile) {
@@ -380,7 +446,8 @@
   }
 
   function longRunSummary(sessions, longRunDay) {
-    const longRun = sessions.find((item) => item.day === longRunDay) || sessions.find((item) => item.sessionType === "Long Run" || item.sessionType === "Race");
+    const longRun = sessions.find((item) => item.day === longRunDay && ["Long Run", "Race"].includes(item.sessionType))
+      || sessions.find((item) => item.sessionType === "Race" || item.sessionType === "Long Run");
     return longRun ? `${longRun.plannedKm} km ${longRun.sessionType.toLowerCase()}` : "Not scheduled";
   }
 
@@ -398,6 +465,16 @@
   function roundKm(value) {
     if (!Number.isFinite(value) || value <= 0) return 0;
     return Math.round(value);
+  }
+
+  function roundDistance(value) {
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    const rounded = Math.round(value * 2) / 2;
+    return Number.isInteger(rounded) ? Math.trunc(rounded) : rounded;
+  }
+
+  function formatDistance(value) {
+    return Number.isInteger(Number(value)) ? String(Math.trunc(Number(value))) : String(Number(value));
   }
 
   function planToTsv(plan) {

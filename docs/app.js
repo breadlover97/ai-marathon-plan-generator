@@ -312,11 +312,12 @@ function renderReview() {
 function renderSummary(plan) {
   const items = [
     ["Plan length", `${plan.summary.totalWeeks} weeks`],
-    ["Start volume", `${plan.summary.startKm} km`],
-    ["Peak volume", `${plan.summary.peakKm} km`],
+    ["Start volume", formatKm(plan.summary.startKm)],
+    ["Peak volume", formatKm(plan.summary.peakKm)],
+    ["Peak long run", formatKm(plan.summary.peakLongRunKm)],
+    ["Long-run cap", formatKm(plan.summary.longRunCapKm)],
     ["Goal pace", plan.goalPacePerKm || "RPE-based"],
     ["Runs/week", plan.profile.runsPerWeek],
-    ["Long run", plan.profile.longRunDay],
     ["Export", "Copy table into Google Sheets or download CSV"],
   ];
   summary.innerHTML = items.map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`).join("");
@@ -536,7 +537,9 @@ function setupMileageChartHover(container, points, dims) {
 }
 
 function formatKm(value) {
-  return `${Math.round(Number(value || 0))} km`;
+  const number = Number(value || 0);
+  const rounded = Number.isInteger(number) ? number : Math.round(number * 10) / 10;
+  return `${rounded} km`;
 }
 
 function longRunKm(week) {

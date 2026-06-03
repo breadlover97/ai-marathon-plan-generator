@@ -37,6 +37,11 @@ DIFFICULTY_LONG_RUN_QUALITY = {
     Difficulty.CHALLENGING: 0.65,
 }
 
+LONG_RUN_TARGET_SHARE = 0.43
+LONG_RUN_MAX_SHARE = 0.46
+LONG_RUN_HARD_CAP_KM = MARATHON_KM * 0.82
+MIN_LONG_RUN_CAP_KM = 10
+
 
 def load_profile(path: str | Path) -> RunnerProfile:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -103,6 +108,21 @@ def build_training_plan(profile: RunnerProfile) -> TrainingPlan:
                 sessions=sessions,
             )
         )
+    peak_long_run = max(
+        (
+            session.planned_km
+            for week in weeks[:-1]
+            for session in week.sessions
+            if session.session_type == "Long Run"
+        ),
+        default=0,
+    )
+    effective_cap = _effective_long_run_cap(profile)
+    if profile.max_long_run_km and peak_long_run < _round_distance(effective_cap) - 0.1:
+        warnings.append(
+            f"Peak long run is {peak_long_run:g} km because the weekly volume cap could not safely support "
+            f"{_round_distance(effective_cap):g} km."
+        )
     return TrainingPlan(
         profile=profile,
         weeks=weeks,
@@ -128,17 +148,37 @@ def _validate_profile(profile: RunnerProfile) -> list[str]:
         raise ValueError("current_weekly_km must be greater than zero")
     if profile.longest_recent_run_km <= 0:
         raise ValueError("longest_recent_run_km must be greater than zero")
+    if profile.max_long_run_km is not None and profile.max_long_run_km < MIN_LONG_RUN_CAP_KM:
+        raise ValueError(f"max_long_run_km must be at least {MIN_LONG_RUN_CAP_KM:g} km")
+    if profile.max_long_run_km and profile.max_long_run_km > LONG_RUN_HARD_CAP_KM:
+        warnings.append(f"Max long run capped at {_round_distance(LONG_RUN_HARD_CAP_KM):g} km for marathon safety.")
+    if profile.longest_recent_run_km > profile.current_weekly_km * 0.75:
+        warnings.append("Longest recent run is high relative to weekly distance. Build weeks will stay conservative.")
     days = {profile.workout_day, profile.medium_long_day, profile.long_run_day, *profile.strength_days, *profile.rest_days}
     unknown = sorted(day for day in days if day not in WEEKDAYS)
     if unknown:
         raise ValueError(f"Unknown weekday(s): {', '.join(unknown)}")
+    key_days = [profile.workout_day, profile.medium_long_day, profile.long_run_day]
+    if len(set(key_days)) != len(key_days):
+        raise ValueError("workout_day, medium_long_day, and long_run_day must be different")
+    rest_days = set(profile.rest_days)
+    strength_days = set(profile.strength_days)
+    for day in key_days:
+        if day in rest_days:
+            raise ValueError("Key run days cannot also be rest days")
+        if day in strength_days:
+            raise ValueError("Key run days cannot also be strength-only days")
+    available_run_days = len([day for day in WEEKDAYS if day not in rest_days and day not in strength_days])
+    if profile.runs_per_week > available_run_days:
+        raise ValueError("runs_per_week exceeds available run days after rest and strength days")
     return warnings
 
 
 def _weekly_targets(profile: RunnerProfile, total_weeks: int) -> list[float]:
     peak_cap = ABILITY_PEAK_KM[profile.running_ability] * VOLUME_MULTIPLIER[profile.training_volume]
     natural_peak = profile.current_weekly_km * (1.45 if total_weeks >= 18 else 1.25)
-    peak = min(peak_cap, max(profile.current_weekly_km * 1.15, natural_peak))
+    long_run_peak_floor = _effective_long_run_cap(profile) / LONG_RUN_TARGET_SHARE
+    peak = min(peak_cap, max(profile.current_weekly_km * 1.15, natural_peak, long_run_peak_floor))
     start = max(profile.current_weekly_km * 0.95, profile.current_weekly_km - 5)
 
     taper_weeks = 3 if total_weeks >= 16 else 2
@@ -149,7 +189,7 @@ def _weekly_targets(profile: RunnerProfile, total_weeks: int) -> list[float]:
     for week in range(1, build_weeks + 1):
         progress = (week - 1) / max(build_weeks - 1, 1)
         ideal = start + (peak - start) * progress
-        if week % 4 == 0:
+        if week % 4 == 0 and week < build_weeks:
             target = max(start * 0.92, last_build * 0.82)
         else:
             target = min(ideal, last_build * 1.08)
@@ -166,8 +206,7 @@ def _weekly_targets(profile: RunnerProfile, total_weeks: int) -> list[float]:
 
 
 def _long_run_targets(profile: RunnerProfile, weekly_targets: list[float], total_weeks: int) -> list[float]:
-    default_cap = min(MARATHON_KM * 0.80, ABILITY_PEAK_KM[profile.running_ability] * 0.40)
-    cap = min(profile.max_long_run_km or default_cap, MARATHON_KM * 0.82)
+    cap = _effective_long_run_cap(profile)
     start = min(max(profile.longest_recent_run_km + 3, profile.longest_recent_run_km * 1.1), cap)
     taper_weeks = 3 if total_weeks >= 16 else 2
     build_weeks = max(total_weeks - taper_weeks, 1)
@@ -177,19 +216,40 @@ def _long_run_targets(profile: RunnerProfile, weekly_targets: list[float], total
     for week in range(1, build_weeks + 1):
         progress = (week - 1) / max(build_weeks - 1, 1)
         ideal = start + (cap - start) * progress
-        if week % 4 == 0:
+        if week % 4 == 0 and week < build_weeks:
             target = max(start * 0.85, last_build * 0.72)
         else:
             target = min(ideal, last_build + 2.5)
             last_build = target
-        target = min(target, weekly_targets[week - 1] * 0.43, cap)
-        long_runs.append(round(target))
+        weekly_limit = weekly_targets[week - 1] * LONG_RUN_MAX_SHARE
+        if week == build_weeks and weekly_limit >= cap:
+            target = cap
+        target = min(target, weekly_limit, cap)
+        long_runs.append(_round_distance(target))
 
     if taper_weeks == 3:
-        long_runs.extend([round(cap * 0.65), round(cap * 0.45), MARATHON_KM])
+        long_runs.extend([_round_distance(cap * 0.65), _round_distance(cap * 0.45), MARATHON_KM])
     else:
-        long_runs.extend([round(cap * 0.50), MARATHON_KM])
+        long_runs.extend([_round_distance(cap * 0.50), MARATHON_KM])
     return long_runs[:total_weeks]
+
+
+def _default_long_run_cap(profile: RunnerProfile) -> float:
+    return min(MARATHON_KM * 0.80, ABILITY_PEAK_KM[profile.running_ability] * 0.40)
+
+
+def _effective_long_run_cap(profile: RunnerProfile) -> float:
+    requested_cap = profile.max_long_run_km if profile.max_long_run_km is not None else _default_long_run_cap(profile)
+    return min(requested_cap, LONG_RUN_HARD_CAP_KM)
+
+
+def _round_distance(value: float) -> float:
+    rounded = int(value * 2 + 0.5) / 2
+    return int(rounded) if rounded.is_integer() else rounded
+
+
+def _format_km(value: float) -> str:
+    return f"{value:g}"
 
 
 def _sessions_for_week(
@@ -202,13 +262,23 @@ def _sessions_for_week(
     goal_pace: str | None,
 ) -> list[Session]:
     race_week = week_number == total_weeks
+    race_day = WEEKDAYS[profile.race_date.weekday()] if race_week else None
     day_types = {day: "Rest" for day in WEEKDAYS}
-    day_types[profile.workout_day] = _workout_type(phase, week_number, race_week)
-    day_types[profile.medium_long_day] = "Medium-Long"
-    day_types[profile.long_run_day] = "Race" if race_week else "Long Run"
+    if not race_week or profile.workout_day != race_day:
+        day_types[profile.workout_day] = _workout_type(phase, week_number, race_week)
+    if not race_week or profile.medium_long_day != race_day:
+        day_types[profile.medium_long_day] = "Easy Run" if race_week else "Medium-Long"
+    if race_week:
+        day_types[race_day] = "Race"
+    else:
+        day_types[profile.long_run_day] = "Long Run"
     for day in profile.strength_days:
+        if day == race_day:
+            continue
         day_types[day] = "Strength"
     for day in profile.rest_days:
+        if day == race_day:
+            continue
         day_types[day] = "Rest"
 
     run_days = [day for day in WEEKDAYS if day_types[day] not in {"Rest", "Strength"}]
@@ -221,7 +291,7 @@ def _sessions_for_week(
         else:
             break
 
-    workout_km = 0 if race_week else max(7, min(target_km * 0.20, 16))
+    workout_km = min(6, max(4, target_km - long_km)) if race_week else max(7, min(target_km * 0.20, 16))
     medium_km = 0 if race_week else max(8, min(target_km * 0.18, 18))
     if profile.runs_per_week <= 4:
         medium_km *= 0.75
@@ -239,7 +309,7 @@ def _sessions_for_week(
         elif session_type == "Medium-Long":
             sessions.append(Session(day, session_type, _medium_long_plan(phase), round(medium_km, 1)))
         elif session_type in {"Long Run", "Race"}:
-            sessions.append(Session(day, session_type, _long_run_plan(phase, week_number, total_weeks, long_km, goal_pace), round(long_km, 1)))
+            sessions.append(Session(day, session_type, _long_run_plan(profile, phase, week_number, total_weeks, long_km, goal_pace), round(long_km, 1)))
         elif session_type == "Easy Run":
             sessions.append(Session(day, session_type, _easy_plan(week_number), easy_km))
         else:
@@ -303,18 +373,18 @@ def _medium_long_plan(phase: str) -> str:
     return "Medium-long easy, finish relaxed"
 
 
-def _long_run_plan(phase: str, week_number: int, total_weeks: int, distance: float, goal_pace: str | None) -> str:
+def _long_run_plan(profile: RunnerProfile, phase: str, week_number: int, total_weeks: int, distance: float, goal_pace: str | None) -> str:
     if week_number == total_weeks:
         return f"Race day: {MARATHON_KM:.1f} km, execute fueling and pacing"
     if phase == "Base Build":
-        return f"{distance:.0f} km easy, no pace pressure"
-    quality_share = DIFFICULTY_LONG_RUN_QUALITY[Difficulty.CHALLENGING]
+        return f"{_format_km(distance)} km easy, no pace pressure"
+    quality_share = DIFFICULTY_LONG_RUN_QUALITY[profile.difficulty]
     if phase == "Race Specific" and week_number % 2 == 1:
         mp_block = max(6, round(distance * quality_share * 0.35))
-        return f"{distance:.0f} km with {mp_block} km total at marathon effort ({goal_pace or 'RPE 6-7/10'})"
+        return f"{_format_km(distance)} km with {mp_block} km total at marathon effort ({goal_pace or 'RPE 6-7/10'})"
     if week_number % 3 == 0:
-        return f"{distance:.0f} km progression, last 5 km steady"
-    return f"{distance:.0f} km easy with fueling test"
+        return f"{_format_km(distance)} km progression, last 5 km steady"
+    return f"{_format_km(distance)} km easy with fueling test"
 
 
 def _strength_plan(profile: RunnerProfile) -> str:
@@ -381,7 +451,11 @@ def _strength_note(profile: RunnerProfile) -> str:
 
 
 def _long_run_summary(sessions: list[Session], long_run_day: str) -> str:
-    session = next(session for session in sessions if session.day == long_run_day)
+    session = next((session for session in sessions if session.day == long_run_day and session.session_type in {"Long Run", "Race"}), None)
+    if session is None:
+        session = next((session for session in sessions if session.session_type in {"Race", "Long Run"}), None)
+    if session is None:
+        return "Not scheduled"
     return f"{session.planned_km:g} km {session.session_type.lower()}"
 
 
