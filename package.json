@@ -1,0 +1,15 @@
+{
+  "name": "ai-marathon-plan-generator",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "pages:dev": "wrangler pages dev docs",
+    "pages:deploy": "wrangler pages deploy docs --project-name ai-marathon-plan-generator --branch main"
+  },
+  "devDependencies": {
+    "wrangler": "latest"
+  }
+}

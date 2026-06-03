@@ -10,7 +10,7 @@ The product goal is simple:
 
 ## Current scope
 
-- Static web app published from `docs/` for GitHub Pages.
+- Static web app published from `docs/` to Cloudflare Pages.
 - Guided intake form with required and optional fields.
 - In-browser plan preview and export to Google Sheets via copyable TSV.
 - CSV download fallback.
@@ -28,7 +28,7 @@ The product goal is simple:
 
 ```text
 docs/
-  index.html               Static web app entrypoint for GitHub Pages
+  index.html               Static web app entrypoint for Cloudflare Pages
   app.js                   Form, preview, and export UI
   engine.js                Browser-side deterministic training engine
   styles.css               Web app styling
@@ -68,6 +68,32 @@ python3 -m http.server 8765 --bind 127.0.0.1 -d docs
 ```
 
 Then open `http://127.0.0.1:8765`.
+
+## Cloudflare Pages
+
+The live site is hosted on Cloudflare Pages:
+
+```text
+https://ai-marathon-plan-generator.pages.dev/
+```
+
+Install the Pages deploy tooling with Node 22 or newer:
+
+```bash
+npm install
+```
+
+Deploy the static `docs/` folder:
+
+```bash
+npm run pages:deploy
+```
+
+Preview through Wrangler:
+
+```bash
+npm run pages:dev
+```
 
 ## AI design
 
