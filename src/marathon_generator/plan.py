@@ -295,9 +295,10 @@ def _sessions_for_week(
 ) -> list[Session]:
     race_week = week_number == total_weeks
     race_day = WEEKDAYS[profile.race_date.weekday()] if race_week else None
+    phase_week_number = _phase_week_number(week_number, total_weeks)
     day_types = {day: "Rest" for day in WEEKDAYS}
     if not race_week or profile.workout_day != race_day:
-        day_types[profile.workout_day] = _workout_type(profile, phase, week_number, race_week)
+        day_types[profile.workout_day] = _workout_type(profile, phase, phase_week_number, race_week)
     if not race_week or profile.medium_long_day != race_day:
         day_types[profile.medium_long_day] = "Easy Run" if race_week else "Medium-Long"
     if race_week:
@@ -358,6 +359,14 @@ def _phase_for_week(week_number: int, total_weeks: int) -> str:
     return "Race Specific"
 
 
+def _phase_week_number(week_number: int, total_weeks: int) -> int:
+    phase = _phase_for_week(week_number, total_weeks)
+    start_week = week_number
+    while start_week > 1 and _phase_for_week(start_week - 1, total_weeks) == phase:
+        start_week -= 1
+    return week_number - start_week + 1
+
+
 def _workout_distance(profile: RunnerProfile, target_km: float, long_km: float, race_week: bool) -> float:
     if race_week:
         return min(6, max(4, target_km - long_km))
@@ -381,34 +390,38 @@ def _workout_type(profile: RunnerProfile, phase: str, week_number: int, race_wee
         return "Sharpen"
     if profile.running_ability == RunningAbility.BEGINNER:
         if phase == "Base Build":
-            return _cycle(["Easy Strides", "Short Fartlek", "Steady Intro"], week_number)
+            return _cycle(["Easy Strides", "Short Fartlek", "Intro Track Strides", "Steady Intro"], week_number)
         if phase == "Marathon Build":
-            return _cycle(["Short Fartlek", "Hill Strides", "Steady Intro"], week_number)
+            return _cycle(["Short Fartlek", "Hill Strides", "Intro Track Strides", "Steady Intro"], week_number)
         if phase == "Race Specific":
-            return _cycle(["Marathon Rhythm", "Short Fartlek", "Easy Strides"], week_number)
+            return _cycle(["Marathon Rhythm", "Short Fartlek", "Intro Track Strides", "Easy Strides"], week_number)
         return "Easy Strides"
     if profile.difficulty == Difficulty.COMFORTABLE:
         if phase == "Base Build":
-            return _cycle(["Easy Strides", "Steady Intro", "Short Fartlek"], week_number)
+            return _cycle(["Easy Strides", "Intro Track Strides", "Steady Intro", "Short Fartlek"], week_number)
         if phase == "Marathon Build":
-            return _cycle(["Steady Intro", "Hill Strides", "Tempo"], week_number)
+            return _cycle(["Steady Intro", "Track 400s", "Hill Strides", "Tempo Intro"], week_number)
         if phase == "Race Specific":
-            return _cycle(["Marathon Rhythm", "Steady Intro", "Easy Strides"], week_number)
+            return _cycle(["Marathon Rhythm", "Track 400s", "Steady Intro", "Easy Strides"], week_number)
         return "Sharpen"
     if profile.running_ability == RunningAbility.INTERMEDIATE:
         if phase == "Base Build":
-            return _cycle(["Easy Strides", "Tempo", "Steady-State"], week_number)
+            return _cycle(["Easy Strides", "Tempo Intro", "Track 400s", "Steady-State"], week_number)
         if phase == "Marathon Build":
-            return _cycle(["Threshold", "Tempo", "Hill Repeats", "Short Fartlek"], week_number)
+            return _cycle(["Cruise Intervals", "Tempo", "Track 800s", "Hill Repeats"], week_number)
         if phase == "Race Specific":
-            return _cycle(["Marathon Pace", "Tempo", "Threshold"], week_number)
+            return _cycle(["Marathon Pace", "Track 1K Repeats", "Tempo", "Cruise Intervals"], week_number)
         return "Sharpen"
     if phase == "Base Build":
-        return ["Threshold", "Tempo", "Steady-State"][week_number % 3]
+        return _cycle(["Easy Strides", "Tempo Intro", "Track 400s", "Steady-State"], week_number)
     if phase == "Marathon Build":
-        return ["Intervals", "Tempo", "Hill Repeats", "Threshold"][week_number % 4]
+        if ABILITY_RANK[profile.running_ability] >= 3:
+            return _cycle(["Track 1K Repeats", "Tempo", "Hill Repeats", "Threshold"], week_number)
+        return _cycle(["Track 800s", "Tempo", "Hill Repeats", "Cruise Intervals"], week_number)
     if phase == "Race Specific":
-        return ["Marathon Pace", "Tempo", "Intervals"][week_number % 3]
+        if ABILITY_RANK[profile.running_ability] >= 3:
+            return _cycle(["Marathon Pace", "Track 1600s", "Tempo", "Track 1K Repeats"], week_number)
+        return _cycle(["Marathon Pace", "Track 1K Repeats", "Tempo", "Track 800s"], week_number)
     return "Sharpen"
 
 
@@ -422,8 +435,11 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
     interval_band = pace_band(goal_pace, 0.85, 0.90)
     rank = ABILITY_RANK[profile.running_ability]
     conservative = rank <= 1 or profile.difficulty == Difficulty.COMFORTABLE
+    challenging = profile.difficulty == Difficulty.CHALLENGING
     if session_type == "Easy Strides":
         return f"Easy run + 6 x 20 sec relaxed strides, full easy recoveries ({easy_band})"
+    if session_type == "Intro Track Strides":
+        return "Track or flat path: 6 x 200 m smooth, 200 m walk-jog; never sprint (RPE 5-6/10)"
     if session_type == "Short Fartlek":
         return "WU + 8 x 1 min gently quicker, 2 min easy, CD (RPE 5-6/10)"
     if session_type == "Steady Intro":
@@ -432,26 +448,62 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
         return "Easy run + 6 x 20 sec relaxed hill strides, walk/jog down"
     if session_type == "Marathon Rhythm":
         return f"WU + 3 x 5 min comfortable marathon rhythm, 3 min easy, CD ({goal_pace or 'RPE 5-6/10'})"
+    if session_type == "Tempo Intro":
+        if conservative:
+            return f"WU + 3 x 5 min steady-tempo, 3 min easy, CD ({tempo_band})"
+        if rank >= 3 and challenging:
+            return f"WU + 3 x 8 min tempo, 3 min jog, CD ({tempo_band})"
+        return f"WU + 2 x 10 min controlled tempo, 4 min jog, CD ({tempo_band})"
+    if session_type == "Cruise Intervals":
+        if conservative:
+            return f"WU + 5 x 3 min controlled threshold, 2 min easy, CD ({tempo_band})"
+        if rank >= 3 and challenging:
+            return f"WU + 6 x 1 km threshold, 90 sec jog, CD ({tempo_band})"
+        return f"WU + 4 x 1 km threshold, 90 sec jog, CD ({tempo_band})"
+    if session_type == "Track 400s":
+        if conservative:
+            return "Track: WU + 6 x 400 m controlled, 200 m walk-jog, CD (RPE 6/10)"
+        return f"Track: WU + 8 x 400 m controlled, 200 m jog, CD ({interval_band})"
+    if session_type == "Track 800s":
+        if conservative:
+            return f"Track: WU + 5 x 800 m controlled, 400 m jog, CD ({interval_band})"
+        reps = 8 if rank >= 3 and challenging else 6
+        return f"Track: WU + {reps} x 800 m at 10K effort, 400 m jog, CD ({interval_band})"
+    if session_type == "Track 1K Repeats":
+        if conservative:
+            return f"Track: WU + 4 x 1 km controlled, 2 min jog, CD ({interval_band})"
+        reps = 6 if rank >= 3 and challenging else 5
+        return f"Track: WU + {reps} x 1 km at 10K effort, 2 min jog, CD ({interval_band})"
+    if session_type == "Track 1600s":
+        reps = 4 if rank >= 3 and challenging else 3
+        return f"Track: WU + {reps} x 1600 m controlled threshold, 400 m jog, CD ({tempo_band})"
     if session_type == "Threshold":
         if conservative:
             return f"WU + 5 x 3 min controlled threshold, 2 min easy, CD ({tempo_band})"
+        if rank >= 3 and challenging:
+            return f"WU + 4 x 2 km controlled threshold, jog recoveries, CD ({tempo_band})"
         if profile.difficulty == Difficulty.BALANCED:
             return f"WU + 3 x 1.5 km controlled threshold, jog recoveries, CD ({tempo_band})"
-        return f"WU + 4 x 2 km controlled threshold, jog recoveries, CD ({tempo_band})"
+        return f"WU + 4 x 1.5 km controlled threshold, jog recoveries, CD ({tempo_band})"
     if session_type == "Tempo":
         if conservative:
             return f"WU + 3 x 6 min controlled steady effort, 3 min easy, CD ({tempo_band})"
+        if rank >= 3 and challenging:
+            return f"WU + 3 x 15 min tempo, 4 min jog, CD ({tempo_band})"
         if profile.difficulty == Difficulty.BALANCED:
             return f"WU + 2 x 12 min tempo, 4 min jog, CD ({tempo_band})"
-        return f"WU + 3 x 15 min tempo, 4 min jog, CD ({tempo_band})"
+        return f"WU + 2 x 15 min tempo, 4 min jog, CD ({tempo_band})"
     if session_type == "Steady-State":
         if conservative:
             return f"WU + 3 x 8 min steady, 3 min jog, CD ({easy_band})"
-        return f"WU + 2 x 20 min steady, 5 min jog, CD ({easy_band})"
+        if rank >= 3 and challenging:
+            return f"WU + 2 x 20 min steady, 5 min jog, CD ({easy_band})"
+        return f"WU + 2 x 15 min steady, 5 min jog, CD ({easy_band})"
     if session_type == "Intervals":
         if conservative:
             return f"WU + 6 x 400 m controlled, 400 m easy, CD ({interval_band})"
-        return f"WU + 8 x 800 m controlled reps, 400 m jog, CD ({interval_band})"
+        reps = 8 if rank >= 3 and challenging else 6
+        return f"WU + {reps} x 800 m controlled reps, 400 m jog, CD ({interval_band})"
     if session_type == "Hill Repeats":
         if conservative:
             return "WU + 8 x 45 sec uphill controlled, jog down, CD (RPE-based)"
@@ -459,9 +511,11 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
     if session_type == "Marathon Pace":
         if conservative:
             return f"WU + 3 x 8 min marathon rhythm, 3 min easy, CD ({goal_pace or 'RPE 6/10'})"
+        if rank >= 3 and challenging:
+            return f"WU + 3 x 5 km at marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
         if profile.difficulty == Difficulty.BALANCED:
             return f"WU + 2 x 4 km at marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
-        return f"WU + 3 x 5 km at marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
+        return f"WU + 2 x 5 km at marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
     if session_type == "Sharpen":
         return "Short easy run + 6 relaxed strides"
     return "Controlled quality session"

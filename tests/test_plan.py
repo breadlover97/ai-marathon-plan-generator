@@ -108,6 +108,20 @@ def test_planned_totals_are_reasonable() -> None:
     assert totals[-1] >= 42.195
 
 
+def test_advanced_plan_starts_controlled_and_adds_track_sessions() -> None:
+    plan = build_training_plan(profile())
+    workouts = [
+        session
+        for week in plan.weeks[:-1]
+        for session in week.sessions
+        if session.session_type not in {"Rest", "Strength", "Easy Run", "Medium-Long", "Long Run"}
+    ]
+    assert workouts[0].session_type == "Easy Strides"
+    assert "3 x 15 min tempo" not in workouts[0].plan
+    workout_types = {session.session_type for session in workouts}
+    assert {"Track 400s", "Track 800s", "Track 1K Repeats"} <= workout_types
+
+
 def test_beginner_first_workout_starts_conservatively() -> None:
     plan = build_training_plan(beginner_profile())
     workout = next(
@@ -139,4 +153,13 @@ def test_beginner_plan_avoids_advanced_quality_templates() -> None:
         for session in week.sessions
         if session.session_type not in {"Rest", "Strength", "Easy Run", "Medium-Long", "Long Run"}
     }
-    assert beginner_workouts <= {"Easy Strides", "Short Fartlek", "Steady Intro", "Hill Strides", "Marathon Rhythm", "Sharpen"}
+    assert beginner_workouts <= {
+        "Easy Strides",
+        "Short Fartlek",
+        "Intro Track Strides",
+        "Steady Intro",
+        "Hill Strides",
+        "Marathon Rhythm",
+        "Sharpen",
+    }
+    assert {"Track 400s", "Track 800s", "Track 1K Repeats", "Track 1600s"}.isdisjoint(beginner_workouts)

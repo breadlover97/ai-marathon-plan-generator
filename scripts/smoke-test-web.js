@@ -45,9 +45,22 @@ assert.equal(raceSession.day, "Sunday");
 assert.equal(raceSession.plannedKm, 42.2);
 assert.equal(plan.weeks.at(-1).longRunSummary, "42.2 km race");
 const tsv = engine.planToTsv(plan);
+const firstWorkout = plan.weeks[0].sessions.find((session) => !["Rest", "Strength", "Easy Run", "Medium-Long", "Long Run", "Race"].includes(session.sessionType));
+assert.equal(firstWorkout.sessionType, "Easy Strides");
+assert.ok(!firstWorkout.plan.includes("3 x 15 min tempo"));
+const workoutTypes = new Set(
+  plan.weeks
+    .slice(0, -1)
+    .flatMap((week) => week.sessions)
+    .filter((session) => !["Rest", "Strength", "Easy Run", "Medium-Long", "Long Run", "Race"].includes(session.sessionType))
+    .map((session) => session.sessionType),
+);
+assert.ok(workoutTypes.has("Track 400s"));
+assert.ok(workoutTypes.has("Track 800s"));
+assert.ok(workoutTypes.has("Track 1K Repeats"));
 assert.ok(tsv.includes("\tMarathon Training Plan"));
 assert.ok(tsv.includes("\tWeek 1\t11 May\t12 May\t13 May\t14 May\t15 May\t16 May\t17 May"));
-assert.ok(tsv.includes("\tType\tTempo\tEasy Run\tMedium-Long\tStrength"));
+assert.ok(tsv.includes("\tType\tEasy Strides\tEasy Run\tMedium-Long\tStrength"));
 assert.ok(tsv.includes("\tDistance (km)\t10\t4\t9\t0\t4\t22.5\t0\t=SUM(C15:I15)"));
 assert.ok(tsv.includes("\tType\tSharpen\tEasy Run\tEasy Run\tStrength\tEasy Run\tRest\tRace"));
 assert.ok(tsv.includes("\tDistance (km)\t6\t2\t2\t0\t2\t0\t42.2\t=SUM(C215:I215)"));
@@ -84,6 +97,17 @@ const beginnerWorkout = beginnerPlan.weeks[0].sessions.find((session) => !["Rest
 assert.equal(beginnerWorkout.sessionType, "Easy Strides");
 assert.ok(beginnerWorkout.plannedKm <= 5);
 assert.ok(beginnerWorkout.plan.includes("relaxed strides"));
+const beginnerWorkoutTypes = new Set(
+  beginnerPlan.weeks
+    .slice(0, -1)
+    .flatMap((week) => week.sessions)
+    .filter((session) => !["Rest", "Strength", "Easy Run", "Medium-Long", "Long Run", "Race"].includes(session.sessionType))
+    .map((session) => session.sessionType),
+);
+assert.ok(beginnerWorkoutTypes.has("Intro Track Strides"));
+for (const trackType of ["Track 400s", "Track 800s", "Track 1K Repeats", "Track 1600s"]) {
+  assert.ok(!beginnerWorkoutTypes.has(trackType), `beginner plan should not include ${trackType}`);
+}
 const beginnerText = beginnerPlan.weeks.flatMap((week) => week.sessions).map((session) => session.plan).join("\n");
 for (const phrase of ["3 x 15 min tempo", "4 x 2 km controlled threshold", "8 x 800 m", "3 x 5 km at marathon effort", "progression, last 5 km steady"]) {
   assert.ok(!beginnerText.includes(phrase), `beginner plan should not include ${phrase}`);

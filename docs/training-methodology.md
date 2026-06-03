@@ -7,6 +7,7 @@ This generator uses a coach-designed deterministic structure. AI can help interp
 - Start from the runner's current sustainable weekly mileage, not from the target race alone.
 - Build with progressive overload.
 - Keep most running easy.
+- Start each plan with controlled quality, even for advanced runners.
 - Add deload weeks every 3-5 weeks.
 - Taper before race day.
 - Cap the longest run around 75-80% of marathon distance unless a coach deliberately overrides it.
@@ -23,8 +24,8 @@ For a marathon plan of 16-26 weeks:
 
 Ability and difficulty adjust what "quality" means:
 
-- Beginner plans start with relaxed strides, short fartlek, and short steady introductions instead of formal tempo, threshold, or interval workouts.
-- Comfortable plans keep workouts controlled even for stronger runners; challenging plans may use longer tempo, threshold, interval, or marathon-pace blocks only when the ability profile can support them.
+- Beginner plans start with relaxed strides, short fartlek, introductory track strides, and short steady introductions instead of formal tempo, threshold, or interval workouts.
+- Comfortable plans keep workouts controlled even for stronger runners; challenging plans may use longer tempo, threshold, track interval, or marathon-pace blocks only when the ability profile can support them.
 - Beginner long runs stay easy, with fueling practice added before pace-specific long-run quality.
 
 ## Weekly structure
@@ -84,7 +85,15 @@ For beginner profiles, early quality sessions should be described mainly by RPE 
 
 - Strides: relaxed, fast-but-smooth, full easy recovery.
 - Short fartlek: gently quicker, never straining.
+- Intro track strides: smooth 200 m reps with walk-jog recovery, never sprinting.
 - Steady intro: controlled, able to settle back to easy running quickly.
+
+Track sessions are introduced progressively:
+
+- Beginner: track or flat-path 200 m strides only.
+- Comfortable: controlled 400 m repeats can appear after base rhythm is established.
+- Intermediate: 400 m in base, 800 m in build, 1 km repeats in race-specific weeks.
+- Advanced and elite: 800 m, 1 km, and 1600 m track sessions can appear, but week one still starts with strides or tempo intro rather than a large tempo block.
 
 ## Long-run model
 
@@ -96,6 +105,15 @@ Long runs rotate through:
 - race-pace practice
 
 Race-pace long runs appear mainly in the specific phase and are scaled down for intermediate runners. Beginner and comfortable profiles should stay easy-first and use long runs for durability and fueling practice before pace pressure.
+
+## Research review
+
+Reviewed on 2026-06-03:
+
+- Hal Higdon Novice 1 keeps first-marathon training simple: four weekly runs, easy midweek running, conversational long runs, stepback weeks, and no formal track/tempo session in the public schedule.
+- B.A.A. Level One is more performance-oriented than a pure novice plan, but still begins with easy/aerobic runs before introducing short hill/track intervals such as 200 m hills and 1 km repeats.
+- PubMed-indexed reviews support caution with novice runners: novice injury incidence is materially higher than recreational runners, and training-load changes or interval work can be associated with injury risk.
+- Elite-runner literature supports periodized hard/easy training and use of tempo plus interval sessions, but that evidence should not be copied directly into beginner plans.
 
 ## Strength model
 

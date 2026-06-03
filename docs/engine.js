@@ -328,11 +328,12 @@
   function sessionsForWeek(profile, weekNumber, totalWeeks, phase, targetKm, longKm, goalPace) {
     const raceWeek = weekNumber === totalWeeks;
     const raceDay = raceWeek ? weekdayNameFromDate(profile.raceDate) : null;
+    const phaseWeekNumber = phaseWeekNumberFor(weekNumber, totalWeeks);
     const dayTypes = Object.fromEntries(WEEKDAYS.map((day) => [day, "Rest"]));
     const workoutDay = profile.workoutDay || "Monday";
     const mediumLongDay = profile.mediumLongDay || "Wednesday";
     const longRunDay = profile.longRunDay || "Saturday";
-    if (!raceWeek || workoutDay !== raceDay) dayTypes[workoutDay] = workoutType(profile, phase, weekNumber, raceWeek);
+    if (!raceWeek || workoutDay !== raceDay) dayTypes[workoutDay] = workoutType(profile, phase, phaseWeekNumber, raceWeek);
     if (!raceWeek || mediumLongDay !== raceDay) dayTypes[mediumLongDay] = raceWeek ? "Easy Run" : "Medium-Long";
     if (raceWeek) {
       dayTypes[raceDay] = "Race";
@@ -386,6 +387,15 @@
     return "Race Specific";
   }
 
+  function phaseWeekNumberFor(weekNumber, totalWeeks) {
+    const phase = phaseForWeek(weekNumber, totalWeeks);
+    let startWeek = weekNumber;
+    while (startWeek > 1 && phaseForWeek(startWeek - 1, totalWeeks) === phase) {
+      startWeek -= 1;
+    }
+    return weekNumber - startWeek + 1;
+  }
+
   function workoutDistance(profile, targetKm, longKm, raceWeek) {
     if (raceWeek) return Math.min(6, Math.max(4, targetKm - longKm));
     const load = WORKOUT_LOAD[profile.runningAbility || "intermediate"];
@@ -405,26 +415,32 @@
   function workoutType(profile, phase, weekNumber, raceWeek) {
     if (raceWeek) return "Sharpen";
     if (profile.runningAbility === "beginner") {
-      if (phase === "Base Build") return cycle(["Easy Strides", "Short Fartlek", "Steady Intro"], weekNumber);
-      if (phase === "Marathon Build") return cycle(["Short Fartlek", "Hill Strides", "Steady Intro"], weekNumber);
-      if (phase === "Race Specific") return cycle(["Marathon Rhythm", "Short Fartlek", "Easy Strides"], weekNumber);
+      if (phase === "Base Build") return cycle(["Easy Strides", "Short Fartlek", "Intro Track Strides", "Steady Intro"], weekNumber);
+      if (phase === "Marathon Build") return cycle(["Short Fartlek", "Hill Strides", "Intro Track Strides", "Steady Intro"], weekNumber);
+      if (phase === "Race Specific") return cycle(["Marathon Rhythm", "Short Fartlek", "Intro Track Strides", "Easy Strides"], weekNumber);
       return "Easy Strides";
     }
     if (profile.difficulty === "comfortable") {
-      if (phase === "Base Build") return cycle(["Easy Strides", "Steady Intro", "Short Fartlek"], weekNumber);
-      if (phase === "Marathon Build") return cycle(["Steady Intro", "Hill Strides", "Tempo"], weekNumber);
-      if (phase === "Race Specific") return cycle(["Marathon Rhythm", "Steady Intro", "Easy Strides"], weekNumber);
+      if (phase === "Base Build") return cycle(["Easy Strides", "Intro Track Strides", "Steady Intro", "Short Fartlek"], weekNumber);
+      if (phase === "Marathon Build") return cycle(["Steady Intro", "Track 400s", "Hill Strides", "Tempo Intro"], weekNumber);
+      if (phase === "Race Specific") return cycle(["Marathon Rhythm", "Track 400s", "Steady Intro", "Easy Strides"], weekNumber);
       return "Sharpen";
     }
     if (profile.runningAbility === "intermediate") {
-      if (phase === "Base Build") return cycle(["Easy Strides", "Tempo", "Steady-State"], weekNumber);
-      if (phase === "Marathon Build") return cycle(["Threshold", "Tempo", "Hill Repeats", "Short Fartlek"], weekNumber);
-      if (phase === "Race Specific") return cycle(["Marathon Pace", "Tempo", "Threshold"], weekNumber);
+      if (phase === "Base Build") return cycle(["Easy Strides", "Tempo Intro", "Track 400s", "Steady-State"], weekNumber);
+      if (phase === "Marathon Build") return cycle(["Cruise Intervals", "Tempo", "Track 800s", "Hill Repeats"], weekNumber);
+      if (phase === "Race Specific") return cycle(["Marathon Pace", "Track 1K Repeats", "Tempo", "Cruise Intervals"], weekNumber);
       return "Sharpen";
     }
-    if (phase === "Base Build") return ["Threshold", "Tempo", "Steady-State"][weekNumber % 3];
-    if (phase === "Marathon Build") return ["Intervals", "Tempo", "Hill Repeats", "Threshold"][weekNumber % 4];
-    if (phase === "Race Specific") return ["Marathon Pace", "Tempo", "Intervals"][weekNumber % 3];
+    if (phase === "Base Build") return cycle(["Easy Strides", "Tempo Intro", "Track 400s", "Steady-State"], weekNumber);
+    if (phase === "Marathon Build") {
+      if (ABILITY_RANK[profile.runningAbility || "intermediate"] >= 3) return cycle(["Track 1K Repeats", "Tempo", "Hill Repeats", "Threshold"], weekNumber);
+      return cycle(["Track 800s", "Tempo", "Hill Repeats", "Cruise Intervals"], weekNumber);
+    }
+    if (phase === "Race Specific") {
+      if (ABILITY_RANK[profile.runningAbility || "intermediate"] >= 3) return cycle(["Marathon Pace", "Track 1600s", "Tempo", "Track 1K Repeats"], weekNumber);
+      return cycle(["Marathon Pace", "Track 1K Repeats", "Tempo", "Track 800s"], weekNumber);
+    }
     return "Sharpen";
   }
 
@@ -438,30 +454,64 @@
     const intervalBand = paceBand(goalPace, 0.85, 0.9);
     const rank = ABILITY_RANK[profile.runningAbility || "intermediate"];
     const conservative = rank <= 1 || profile.difficulty === "comfortable";
+    const challenging = profile.difficulty === "challenging";
     const plans = {
       "Easy Strides": `Easy run + 6 x 20 sec relaxed strides, full easy recoveries (${easyBand})`,
+      "Intro Track Strides": "Track or flat path: 6 x 200 m smooth, 200 m walk-jog; never sprint (RPE 5-6/10)",
       "Short Fartlek": "WU + 8 x 1 min gently quicker, 2 min easy, CD (RPE 5-6/10)",
       "Steady Intro": `WU + 3 x 5 min steady, 3 min easy, CD (${easyBand})`,
       "Hill Strides": "Easy run + 6 x 20 sec relaxed hill strides, walk/jog down",
       "Marathon Rhythm": `WU + 3 x 5 min comfortable marathon rhythm, 3 min easy, CD (${goalPace || "RPE 5-6/10"})`,
+      "Tempo Intro": conservative
+        ? `WU + 3 x 5 min steady-tempo, 3 min easy, CD (${tempoBand})`
+        : rank >= 3 && challenging
+          ? `WU + 3 x 8 min tempo, 3 min jog, CD (${tempoBand})`
+          : `WU + 2 x 10 min controlled tempo, 4 min jog, CD (${tempoBand})`,
+      "Cruise Intervals": conservative
+        ? `WU + 5 x 3 min controlled threshold, 2 min easy, CD (${tempoBand})`
+        : rank >= 3 && challenging
+          ? `WU + 6 x 1 km threshold, 90 sec jog, CD (${tempoBand})`
+          : `WU + 4 x 1 km threshold, 90 sec jog, CD (${tempoBand})`,
+      "Track 400s": conservative
+        ? "Track: WU + 6 x 400 m controlled, 200 m walk-jog, CD (RPE 6/10)"
+        : `Track: WU + 8 x 400 m controlled, 200 m jog, CD (${intervalBand})`,
+      "Track 800s": conservative
+        ? `Track: WU + 5 x 800 m controlled, 400 m jog, CD (${intervalBand})`
+        : `Track: WU + ${rank >= 3 && challenging ? 8 : 6} x 800 m at 10K effort, 400 m jog, CD (${intervalBand})`,
+      "Track 1K Repeats": conservative
+        ? `Track: WU + 4 x 1 km controlled, 2 min jog, CD (${intervalBand})`
+        : `Track: WU + ${rank >= 3 && challenging ? 6 : 5} x 1 km at 10K effort, 2 min jog, CD (${intervalBand})`,
+      "Track 1600s": `Track: WU + ${rank >= 3 && challenging ? 4 : 3} x 1600 m controlled threshold, 400 m jog, CD (${tempoBand})`,
       Threshold: conservative
         ? `WU + 5 x 3 min controlled threshold, 2 min easy, CD (${tempoBand})`
-        : profile.difficulty === "balanced"
+        : rank >= 3 && challenging
+          ? `WU + 4 x 2 km controlled threshold, jog recoveries, CD (${tempoBand})`
+          : profile.difficulty === "balanced"
           ? `WU + 3 x 1.5 km controlled threshold, jog recoveries, CD (${tempoBand})`
-          : `WU + 4 x 2 km controlled threshold, jog recoveries, CD (${tempoBand})`,
+          : `WU + 4 x 1.5 km controlled threshold, jog recoveries, CD (${tempoBand})`,
       Tempo: conservative
         ? `WU + 3 x 6 min controlled steady effort, 3 min easy, CD (${tempoBand})`
-        : profile.difficulty === "balanced"
+        : rank >= 3 && challenging
+          ? `WU + 3 x 15 min tempo, 4 min jog, CD (${tempoBand})`
+          : profile.difficulty === "balanced"
           ? `WU + 2 x 12 min tempo, 4 min jog, CD (${tempoBand})`
-          : `WU + 3 x 15 min tempo, 4 min jog, CD (${tempoBand})`,
-      "Steady-State": conservative ? `WU + 3 x 8 min steady, 3 min jog, CD (${easyBand})` : `WU + 2 x 20 min steady, 5 min jog, CD (${easyBand})`,
-      Intervals: conservative ? `WU + 6 x 400 m controlled, 400 m easy, CD (${intervalBand})` : `WU + 8 x 800 m controlled reps, 400 m jog, CD (${intervalBand})`,
+          : `WU + 2 x 15 min tempo, 4 min jog, CD (${tempoBand})`,
+      "Steady-State": conservative
+        ? `WU + 3 x 8 min steady, 3 min jog, CD (${easyBand})`
+        : rank >= 3 && challenging
+          ? `WU + 2 x 20 min steady, 5 min jog, CD (${easyBand})`
+          : `WU + 2 x 15 min steady, 5 min jog, CD (${easyBand})`,
+      Intervals: conservative
+        ? `WU + 6 x 400 m controlled, 400 m easy, CD (${intervalBand})`
+        : `WU + ${rank >= 3 && challenging ? 8 : 6} x 800 m controlled reps, 400 m jog, CD (${intervalBand})`,
       "Hill Repeats": conservative ? "WU + 8 x 45 sec uphill controlled, jog down, CD (RPE-based)" : "WU + 10 x 75 sec uphill strong, jog down, CD (RPE-based)",
       "Marathon Pace": conservative
         ? `WU + 3 x 8 min marathon rhythm, 3 min easy, CD (${goalPace || "RPE 6/10"})`
-        : profile.difficulty === "balanced"
+        : rank >= 3 && challenging
+          ? `WU + 3 x 5 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`
+          : profile.difficulty === "balanced"
           ? `WU + 2 x 4 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`
-          : `WU + 3 x 5 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`,
+          : `WU + 2 x 5 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`,
       Sharpen: "Short easy run + 6 relaxed strides",
     };
     return plans[sessionType] || "Controlled quality session";
