@@ -16,6 +16,7 @@ The product goal is simple:
 - CSV download fallback.
 - Research-backed intake schema for 10K, half marathon, and marathon plan generation.
 - Deterministic training-plan engine for weekly mileage, workout types, deloads, taper, long runs, and strength slots across all supported race distances.
+- Low/no-base runner mode with run-walk progression and conservative warnings.
 - Google Sheets-ready `.xlsx` exporter matching the provided workbook structure:
   - top briefing area
   - weekly blocks

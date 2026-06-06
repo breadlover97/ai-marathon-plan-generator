@@ -318,7 +318,7 @@ function renderReview() {
     ["Race", profile.raceName || "Missing"],
     ["Distance", raceDistanceLabel(profile.raceDistance)],
     ["Dates", profile.startDate && profile.raceDate ? `${profile.startDate} to ${profile.raceDate}` : "Missing"],
-    ["Current running", profile.currentWeeklyKm && profile.longestRecentRunKm ? `${profile.currentWeeklyKm} km/week, ${profile.longestRecentRunKm} km long run` : "Missing"],
+    ["Current running", hasNumber(profile.currentWeeklyKm) && hasNumber(profile.longestRecentRunKm) ? `${profile.currentWeeklyKm} km/week, ${profile.longestRecentRunKm} km long run` : "Missing"],
     ["Schedule", profile.workoutDay && profile.mediumLongDay && profile.longRunDay ? `Workout ${profile.workoutDay}, medium-long ${profile.mediumLongDay}, long run ${profile.longRunDay}` : "Missing"],
     ["Training style", profile.trainingVolume && profile.difficulty ? `${preferenceLabel("trainingVolume", profile.trainingVolume)}, ${preferenceLabel("difficulty", profile.difficulty)}` : "Missing"],
   ];
@@ -644,6 +644,10 @@ function raceDistanceLabel(value) {
 
 function fileSlug(value) {
   return String(value || "race").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "race";
+}
+
+function hasNumber(value) {
+  return Number.isFinite(Number(value));
 }
 
 init();

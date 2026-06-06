@@ -11,6 +11,7 @@
   const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   const ABILITY_PEAK_KM = {
+    new: 45,
     beginner: 50,
     intermediate: 68,
     advanced: 88,
@@ -31,14 +32,16 @@
   };
 
   const ABILITY_RANK = {
-    beginner: 0,
-    intermediate: 1,
-    advanced: 2,
-    elite: 3,
-    elite_plus: 4,
+    new: 0,
+    beginner: 1,
+    intermediate: 2,
+    advanced: 3,
+    elite: 4,
+    elite_plus: 5,
   };
 
   const WORKOUT_LOAD = {
+    new: { share: 0.12, floor: 1, cap: 4 },
     beginner: { share: 0.14, floor: 4, cap: 7.5 },
     intermediate: { share: 0.17, floor: 5.5, cap: 11 },
     advanced: { share: 0.2, floor: 7, cap: 16 },
@@ -47,6 +50,7 @@
   };
 
   const MEDIUM_LONG_LOAD = {
+    new: { share: 0.14, floor: 1, cap: 7 },
     beginner: { share: 0.16, floor: 6, cap: 12 },
     intermediate: { share: 0.17, floor: 7, cap: 15 },
     advanced: { share: 0.18, floor: 8, cap: 18 },
@@ -74,7 +78,7 @@
       longRunMaxShare: 0.42,
       minLongRunCapKm: 6,
       hardLongRunCapKm: 18,
-      defaultLongRunCaps: { beginner: 8, intermediate: 11, advanced: 14, elite: 16, elite_plus: 18 },
+      defaultLongRunCaps: { new: 8, beginner: 8, intermediate: 11, advanced: 14, elite: 16, elite_plus: 18 },
       raceWeekVolumeFloor: 6,
       raceWeekVolumeShare: 0.45,
       easyBand: [1.25, 1.55],
@@ -96,7 +100,7 @@
       longRunMaxShare: 0.45,
       minLongRunCapKm: 10,
       hardLongRunCapKm: 24,
-      defaultLongRunCaps: { beginner: 15, intermediate: 18, advanced: 21, elite: 23, elite_plus: 24 },
+      defaultLongRunCaps: { new: 14, beginner: 15, intermediate: 18, advanced: 21, elite: 23, elite_plus: 24 },
       raceWeekVolumeFloor: 8,
       raceWeekVolumeShare: 0.52,
       easyBand: [1.22, 1.48],
@@ -201,8 +205,14 @@
     if (!profile.raceName) errors.push("Race name is required.");
     if (!profile.startDate) errors.push("Start date is required.");
     if (!profile.raceDate) errors.push("Race date is required.");
-    if (!profile.currentWeeklyKm || Number(profile.currentWeeklyKm) <= 0) errors.push("Current weekly distance is required.");
-    if (!profile.longestRecentRunKm || Number(profile.longestRecentRunKm) <= 0) errors.push("Longest recent run is required.");
+    const currentWeeklyKm = Number(profile.currentWeeklyKm);
+    const longestRecentRunKm = Number(profile.longestRecentRunKm);
+    if (profile.currentWeeklyKm === null || profile.currentWeeklyKm === undefined || profile.currentWeeklyKm === "" || !Number.isFinite(currentWeeklyKm) || currentWeeklyKm < 0) {
+      errors.push("Current weekly distance must be 0 km or higher.");
+    }
+    if (profile.longestRecentRunKm === null || profile.longestRecentRunKm === undefined || profile.longestRecentRunKm === "" || !Number.isFinite(longestRecentRunKm) || longestRecentRunKm < 0) {
+      errors.push("Longest recent run must be 0 km or higher.");
+    }
     if (!profile.runsPerWeek || Number(profile.runsPerWeek) < 3) errors.push("Choose at least 3 running days per week.");
     if (!profile.runningAbility) errors.push("Running ability is required.");
     if (!profile.workoutDay) errors.push("Workout day is required.");
@@ -232,7 +242,14 @@
       errors.push("Runs per week exceeds available run days after rest and strength days.");
     }
 
-    if (profile.currentWeeklyKm && profile.longestRecentRunKm && Number(profile.longestRecentRunKm) > Number(profile.currentWeeklyKm) * 0.75) {
+    if (lowBaseProfile(profile)) {
+      warnings.push("Little or no running base detected. The plan starts with run-walk volume and keeps workouts effort-based until consistency is established.");
+      if (config.key === "marathon" && weekCount(profile) < 24) {
+        warnings.push("A marathon from little or no base is high risk on this timeline. Extend the plan if possible, or consider a 10K/half-marathon stepping stone.");
+      }
+    }
+
+    if (currentWeeklyKm > 0 && longestRecentRunKm > currentWeeklyKm * 0.75) {
       warnings.push("Your longest recent run is high relative to weekly distance. The plan will keep build weeks conservative.");
     }
 
@@ -245,8 +262,8 @@
       }
     }
 
-    if (profile.runningAbility === "beginner" && profile.difficulty === "challenging") {
-      warnings.push("Beginner plans keep workouts conservative even when difficulty is challenging.");
+    if (["new", "beginner"].includes(profile.runningAbility) && profile.difficulty === "challenging") {
+      warnings.push("New and beginner plans keep workouts conservative even when difficulty is challenging.");
     }
 
     if (profile.injuryNotes) {
@@ -333,14 +350,15 @@
 
   function weeklyTargetsFor(profile, totalWeeks) {
     const config = raceConfig(profile);
-    const current = Number(profile.currentWeeklyKm);
+    const rawCurrent = currentWeeklyKm(profile);
+    const current = planningStartKm(profile, config);
     const ability = profile.runningAbility || "intermediate";
     const volume = profile.trainingVolume || "steady";
     const peakCap = ABILITY_PEAK_KM[ability] * VOLUME_MULTIPLIER[volume] * config.peakScale;
     const naturalPeak = current * (totalWeeks >= 14 ? config.naturalPeakLong : config.naturalPeakShort);
     const longRunPeakFloor = effectiveLongRunCap(profile) / config.longRunTargetShare;
     const peak = Math.min(peakCap, Math.max(current * 1.15, naturalPeak, longRunPeakFloor));
-    const start = Math.max(current * 0.95, current - 5);
+    const start = lowBaseProfile(profile) ? current : Math.max(rawCurrent * 0.95, rawCurrent - 5);
     const taperWeeks = taperWeeksFor(profile, totalWeeks);
     const buildWeeks = Math.max(totalWeeks - taperWeeks, 1);
     const targets = [];
@@ -353,21 +371,22 @@
       if (week % 4 === 0 && week < buildWeeks) {
         target = Math.max(start * 0.92, lastBuild * 0.82);
       } else {
-        target = Math.min(ideal, lastBuild * 1.08);
+        const maxBuildStep = lowBaseProfile(profile) ? lowBaseWeeklyStep(config) : lastBuild * 0.08;
+        target = Math.min(ideal, lastBuild + Math.max(maxBuildStep, lastBuild * 0.08));
         lastBuild = target;
       }
       targets.push(round1(Math.max(target, start * 0.88)));
     }
 
-    const taper = taperTargetsFor(config, peak, taperWeeks);
+    const taper = taperTargetsFor(profile, config, peak, taperWeeks);
     return targets.concat(taper.map(round1)).slice(0, totalWeeks);
   }
 
   function longRunTargetsFor(profile, weeklyTargets, totalWeeks) {
     const config = raceConfig(profile);
     const cap = effectiveLongRunCap(profile);
-    const recent = Number(profile.longestRecentRunKm);
-    const start = Math.min(Math.max(recent + longRunStartAdd(config), recent * 1.1), cap);
+    const recent = planningRecentLongRunKm(profile, config);
+    const start = Math.min(Math.max(recent + longRunStartAdd(profile, config), recent * 1.1), cap);
     const taperWeeks = taperWeeksFor(profile, totalWeeks);
     const buildWeeks = Math.max(totalWeeks - taperWeeks, 1);
     const longRuns = [];
@@ -415,6 +434,53 @@
     return RACE_DISTANCES[profile.raceDistance] || RACE_DISTANCES[DEFAULT_RACE_DISTANCE];
   }
 
+  function currentWeeklyKm(profile) {
+    const value = Number(profile.currentWeeklyKm);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  function recentLongRunKm(profile) {
+    const value = Number(profile.longestRecentRunKm);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  function lowBaseProfile(profile) {
+    return profile.runningAbility === "new" || currentWeeklyKm(profile) < 5 || recentLongRunKm(profile) < 3;
+  }
+
+  function planningStartKm(profile, config) {
+    const current = currentWeeklyKm(profile);
+    if (!lowBaseProfile(profile)) return current;
+    if (config.key === "10k") return Math.max(current, 3);
+    if (config.key === "half_marathon") return Math.max(current, 4);
+    return Math.max(current, 5);
+  }
+
+  function planningRecentLongRunKm(profile, config) {
+    const recent = recentLongRunKm(profile);
+    if (!lowBaseProfile(profile)) return recent;
+    if (config.key === "10k") return Math.max(recent, 1);
+    if (config.key === "half_marathon") return Math.max(recent, 2);
+    return Math.max(recent, 3);
+  }
+
+  function lowBaseWeeklyStep(config) {
+    if (config.key === "10k") return 2;
+    if (config.key === "half_marathon") return 2.5;
+    return 3;
+  }
+
+  function lowBaseRaceWeekFloor(config) {
+    if (config.key === "10k") return 3;
+    if (config.key === "half_marathon") return 5;
+    return 6;
+  }
+
+  function weekCount(profile) {
+    if (!profile.startDate || !profile.raceDate) return 0;
+    return Math.floor((parseDate(profile.raceDate) - parseDate(profile.startDate)) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  }
+
   function taperWeeksFor(profile, totalWeeks) {
     const config = raceConfig(profile);
     if (config.key === "marathon") return totalWeeks >= 16 ? 3 : 2;
@@ -422,8 +488,10 @@
     return totalWeeks >= 7 ? 2 : 1;
   }
 
-  function taperTargetsFor(config, peak, taperWeeks) {
-    const raceWeekTarget = Math.max(config.distanceKm + config.raceWeekVolumeFloor, peak * config.raceWeekVolumeShare);
+  function taperTargetsFor(profile, config, peak, taperWeeks) {
+    const raceWeekFloor = lowBaseProfile(profile) ? lowBaseRaceWeekFloor(config) : config.raceWeekVolumeFloor;
+    const raceWeekShare = lowBaseProfile(profile) ? Math.min(config.raceWeekVolumeShare, 0.45) : config.raceWeekVolumeShare;
+    const raceWeekTarget = Math.max(config.distanceKm + raceWeekFloor, peak * raceWeekShare);
     if (taperWeeks === 3) return [peak * 0.72, peak * 0.5, raceWeekTarget];
     if (taperWeeks === 2) return [peak * 0.55, raceWeekTarget];
     return [raceWeekTarget];
@@ -436,7 +504,8 @@
     return [raceDistance];
   }
 
-  function longRunStartAdd(config) {
+  function longRunStartAdd(profile, config) {
+    if (lowBaseProfile(profile)) return 1;
     if (config.key === "10k") return 2;
     if (config.key === "half_marathon") return 2.5;
     return 3;
@@ -542,6 +611,12 @@
   function workoutType(profile, phase, weekNumber, raceWeek) {
     const config = raceConfig(profile);
     if (raceWeek) return "Sharpen";
+    if (profile.runningAbility === "new") {
+      if (phase === "Base Build") return "Run-Walk";
+      if (phase === config.buildPhase) return cycle(["Run-Walk", "Easy Strides", "Steady Intro", "Run-Walk"], weekNumber);
+      if (phase === "Race Specific") return cycle([raceRhythmType(config), "Run-Walk", "Easy Strides", "Steady Intro"], weekNumber);
+      return "Run-Walk";
+    }
     if (profile.runningAbility === "beginner") {
       if (phase === "Base Build") return cycle(["Easy Strides", "Short Fartlek", "Intro Track Strides", "Steady Intro"], weekNumber);
       if (phase === config.buildPhase) return cycle(["Short Fartlek", "Hill Strides", "Intro Track Strides", "Steady Intro"], weekNumber);
@@ -574,11 +649,11 @@
     }
     if (phase === "Base Build") return cycle(["Easy Strides", "Tempo Intro", "Track 400s", "Steady-State"], weekNumber);
     if (phase === config.buildPhase) {
-      if (ABILITY_RANK[profile.runningAbility || "intermediate"] >= 3) return cycle(["Track 1K Repeats", "Tempo", "Hill Repeats", "Threshold"], weekNumber);
+      if (ABILITY_RANK[profile.runningAbility || "intermediate"] >= 4) return cycle(["Track 1K Repeats", "Tempo", "Hill Repeats", "Threshold"], weekNumber);
       return cycle(["Track 800s", "Tempo", "Hill Repeats", "Cruise Intervals"], weekNumber);
     }
     if (phase === "Race Specific") {
-      if (ABILITY_RANK[profile.runningAbility || "intermediate"] >= 3) return cycle(["Marathon Pace", "Track 1600s", "Tempo", "Track 1K Repeats"], weekNumber);
+      if (ABILITY_RANK[profile.runningAbility || "intermediate"] >= 4) return cycle(["Marathon Pace", "Track 1600s", "Tempo", "Track 1K Repeats"], weekNumber);
       return cycle(["Marathon Pace", "Track 1K Repeats", "Tempo", "Track 800s"], weekNumber);
     }
     return "Sharpen";
@@ -600,9 +675,10 @@
     const tempoBand = paceBand(goalPace, ...config.tempoBand);
     const intervalBand = paceBand(goalPace, ...config.intervalBand);
     const rank = ABILITY_RANK[profile.runningAbility || "intermediate"];
-    const conservative = rank <= 1 || profile.difficulty === "comfortable";
+    const conservative = rank <= 2 || profile.difficulty === "comfortable";
     const challenging = profile.difficulty === "challenging";
     const plans = {
+      "Run-Walk": "Run-walk: repeat 2-4 min very easy jog + 1-2 min walk; stop while it still feels controlled (RPE 3-4/10)",
       "Easy Strides": `Easy run + 6 x 20 sec relaxed strides, full easy recoveries (${easyBand})`,
       "Intro Track Strides": "Track or flat path: 6 x 200 m smooth, 200 m walk-jog; never sprint (RPE 5-6/10)",
       "Short Fartlek": "WU + 8 x 1 min gently quicker, 2 min easy, CD (RPE 5-6/10)",
@@ -613,12 +689,12 @@
       "10K Rhythm": `WU + 8 x 45 sec smooth 10K rhythm, 90 sec easy, CD (${goalPace || "RPE 6/10"})`,
       "Tempo Intro": conservative
         ? `WU + 3 x 5 min steady-tempo, 3 min easy, CD (${tempoBand})`
-        : rank >= 3 && challenging
+        : rank >= 4 && challenging
           ? `WU + 3 x 8 min tempo, 3 min jog, CD (${tempoBand})`
           : `WU + 2 x 10 min controlled tempo, 4 min jog, CD (${tempoBand})`,
       "Cruise Intervals": conservative
         ? `WU + 5 x 3 min controlled threshold, 2 min easy, CD (${tempoBand})`
-        : rank >= 3 && challenging
+        : rank >= 4 && challenging
           ? `WU + 6 x 1 km threshold, 90 sec jog, CD (${tempoBand})`
           : `WU + 4 x 1 km threshold, 90 sec jog, CD (${tempoBand})`,
       "Track 400s": conservative
@@ -626,47 +702,47 @@
         : `Track: WU + 8 x 400 m controlled, 200 m jog, CD (${intervalBand})`,
       "Track 800s": conservative
         ? `Track: WU + 5 x 800 m controlled, 400 m jog, CD (${intervalBand})`
-        : `Track: WU + ${rank >= 3 && challenging ? 8 : 6} x 800 m at 10K effort, 400 m jog, CD (${intervalBand})`,
+        : `Track: WU + ${rank >= 4 && challenging ? 8 : 6} x 800 m at 10K effort, 400 m jog, CD (${intervalBand})`,
       "Track 1K Repeats": conservative
         ? `Track: WU + 4 x 1 km controlled, 2 min jog, CD (${intervalBand})`
-        : `Track: WU + ${rank >= 3 && challenging ? 6 : 5} x 1 km at 10K effort, 2 min jog, CD (${intervalBand})`,
-      "Track 1600s": `Track: WU + ${rank >= 3 && challenging ? 4 : 3} x 1600 m controlled threshold, 400 m jog, CD (${tempoBand})`,
+        : `Track: WU + ${rank >= 4 && challenging ? 6 : 5} x 1 km at 10K effort, 2 min jog, CD (${intervalBand})`,
+      "Track 1600s": `Track: WU + ${rank >= 4 && challenging ? 4 : 3} x 1600 m controlled threshold, 400 m jog, CD (${tempoBand})`,
       "10K Pace Repeats": conservative
         ? `WU + 6 x 2 min at controlled 10K effort, 2 min easy, CD (${goalPace || "RPE 7/10"})`
-        : rank >= 3 && challenging
+        : rank >= 4 && challenging
           ? `Track: WU + 5 x 1 km at 10K effort, 2 min jog, CD (${goalPace || "RPE 7-8/10"})`
           : `Track: WU + 4 x 1 km at 10K effort, 2 min jog, CD (${goalPace || "RPE 7/10"})`,
       "Half Marathon Pace": conservative
         ? `WU + 3 x 8 min half-marathon rhythm, 3 min easy, CD (${goalPace || "RPE 6/10"})`
-        : rank >= 3 && challenging
+        : rank >= 4 && challenging
           ? `WU + 3 x 3 km at half-marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`
           : `WU + 2 x 3 km at half-marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`,
       Threshold: conservative
         ? `WU + 5 x 3 min controlled threshold, 2 min easy, CD (${tempoBand})`
-        : rank >= 3 && challenging
+        : rank >= 4 && challenging
           ? `WU + 4 x 2 km controlled threshold, jog recoveries, CD (${tempoBand})`
           : profile.difficulty === "balanced"
           ? `WU + 3 x 1.5 km controlled threshold, jog recoveries, CD (${tempoBand})`
           : `WU + 4 x 1.5 km controlled threshold, jog recoveries, CD (${tempoBand})`,
       Tempo: conservative
         ? `WU + 3 x 6 min controlled steady effort, 3 min easy, CD (${tempoBand})`
-        : rank >= 3 && challenging
+        : rank >= 4 && challenging
           ? `WU + 3 x 15 min tempo, 4 min jog, CD (${tempoBand})`
           : profile.difficulty === "balanced"
           ? `WU + 2 x 12 min tempo, 4 min jog, CD (${tempoBand})`
           : `WU + 2 x 15 min tempo, 4 min jog, CD (${tempoBand})`,
       "Steady-State": conservative
         ? `WU + 3 x 8 min steady, 3 min jog, CD (${easyBand})`
-        : rank >= 3 && challenging
+        : rank >= 4 && challenging
           ? `WU + 2 x 20 min steady, 5 min jog, CD (${easyBand})`
           : `WU + 2 x 15 min steady, 5 min jog, CD (${easyBand})`,
       Intervals: conservative
         ? `WU + 6 x 400 m controlled, 400 m easy, CD (${intervalBand})`
-        : `WU + ${rank >= 3 && challenging ? 8 : 6} x 800 m controlled reps, 400 m jog, CD (${intervalBand})`,
+        : `WU + ${rank >= 4 && challenging ? 8 : 6} x 800 m controlled reps, 400 m jog, CD (${intervalBand})`,
       "Hill Repeats": conservative ? "WU + 8 x 45 sec uphill controlled, jog down, CD (RPE-based)" : "WU + 10 x 75 sec uphill strong, jog down, CD (RPE-based)",
       "Marathon Pace": conservative
         ? `WU + 3 x 8 min marathon rhythm, 3 min easy, CD (${goalPace || "RPE 6/10"})`
-        : rank >= 3 && challenging
+        : rank >= 4 && challenging
           ? `WU + 3 x 5 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`
           : profile.difficulty === "balanced"
           ? `WU + 2 x 4 km at marathon effort, 1 km easy, CD (${goalPace || "RPE 6-7/10"})`
@@ -677,6 +753,7 @@
   }
 
   function mediumLongPlan(profile, phase) {
+    if (profile.runningAbility === "new") return "Short easy run-walk, conversational throughout";
     if (profile.runningAbility === "beginner" || profile.difficulty === "comfortable") return "Medium-long easy, conversational throughout";
     if (phase === "Race Specific") return "Medium-long easy with last 20 min steady if fresh";
     if (phase === "Taper") return "Reduced medium-long, relaxed and conversational";
@@ -687,6 +764,9 @@
     const config = raceConfig(profile);
     if (weekNumber === totalWeeks) return `${formatDistance(roundDistance(config.distanceKm))} km race day: execute ${config.raceExecution}`;
     if (phase === "Base Build") return `${formatDistance(distance)} km easy, no pace pressure`;
+    if (profile.runningAbility === "new") {
+      return `${formatDistance(distance)} km run-walk easy; keep breathing controlled and finish fresh`;
+    }
     if (profile.runningAbility === "beginner" || profile.difficulty === "comfortable") {
       if (phase === config.buildPhase || phase === "Race Specific") return `${formatDistance(distance)} km easy with relaxed race-specific awareness; keep the finish controlled`;
       return `${formatDistance(distance)} km easy, conversational throughout`;
@@ -706,12 +786,12 @@
     }
     const qualityShare = DIFFICULTY_LONG_RUN_QUALITY[profile.difficulty || "balanced"];
     if (phase === "Race Specific" && weekNumber % 2 === 1) {
-      const minimumBlock = ABILITY_RANK[profile.runningAbility || "intermediate"] <= 1 ? 4 : 6;
+      const minimumBlock = ABILITY_RANK[profile.runningAbility || "intermediate"] <= 2 ? 4 : 6;
       const mpBlock = Math.max(minimumBlock, Math.round(distance * qualityShare * 0.35));
       return `${formatDistance(distance)} km with ${mpBlock} km total at marathon effort (${goalPace || "RPE 6-7/10"})`;
     }
     if (weekNumber % 3 === 0) {
-      const steadyFinish = ABILITY_RANK[profile.runningAbility || "intermediate"] <= 1 ? 3 : 5;
+      const steadyFinish = ABILITY_RANK[profile.runningAbility || "intermediate"] <= 2 ? 3 : 5;
       return `${formatDistance(distance)} km progression, last ${steadyFinish} km steady`;
     }
     return `${formatDistance(distance)} km easy with fueling test`;

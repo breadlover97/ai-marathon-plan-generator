@@ -6,6 +6,7 @@ from enum import StrEnum
 
 
 class RunningAbility(StrEnum):
+    NEW = "new"
     BEGINNER = "beginner"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"

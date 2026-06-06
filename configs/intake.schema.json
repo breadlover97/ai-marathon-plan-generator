@@ -32,7 +32,7 @@
     "runs_per_week": { "type": "integer", "minimum": 3, "maximum": 7 },
     "running_ability": {
       "type": "string",
-      "enum": ["beginner", "intermediate", "advanced", "elite", "elite_plus"]
+      "enum": ["new", "beginner", "intermediate", "advanced", "elite", "elite_plus"]
     },
     "training_volume": {
       "type": "string",

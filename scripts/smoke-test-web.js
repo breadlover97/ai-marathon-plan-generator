@@ -176,7 +176,56 @@ for (const phrase of ["3 x 15 min tempo", "4 x 2 km controlled threshold", "8 x 
   assert.ok(!beginnerText.includes(phrase), `beginner plan should not include ${phrase}`);
 }
 
-const invalid = engine.buildTrainingPlan({ ...profile, raceName: "", currentWeeklyKm: 0 });
+const newRunnerBase = {
+  ...tenKProfile,
+  athleteName: "New Runner",
+  currentWeeklyKm: 0,
+  longestRecentRunKm: 0,
+  runsPerWeek: 3,
+  runningAbility: "new",
+  trainingVolume: "gradual",
+  difficulty: "comfortable",
+  goalTime: "",
+  maxLongRunKm: "",
+};
+
+const newRunner10K = engine.buildTrainingPlan(newRunnerBase);
+assert.equal(newRunner10K.validation.errors.length, 0);
+assert.ok(newRunner10K.validation.warnings.some((warning) => warning.includes("Little or no running base")));
+assert.equal(newRunner10K.summary.startKm, 3);
+assert.ok(newRunner10K.summary.peakLongRunKm <= 8);
+assert.ok(newRunner10K.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Run-Walk"));
+assert.ok(!newRunner10K.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType.startsWith("Track")));
+assert.ok(!newRunner10K.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "10K Pace Repeats"));
+assert.equal(newRunner10K.weeks.at(-1).sessions.find((session) => session.sessionType === "Race").plannedKm, 10);
+assert.ok(newRunner10K.weeks.every((week) => week.sessions.every((session) => Number.isInteger(session.plannedKm))));
+
+const newRunnerHalf = engine.buildTrainingPlan({
+  ...newRunnerBase,
+  raceName: "First Half Marathon",
+  raceDistance: "half_marathon",
+  raceDate: "2026-11-18",
+});
+assert.equal(newRunnerHalf.validation.errors.length, 0);
+assert.equal(newRunnerHalf.summary.startKm, 4);
+assert.ok(newRunnerHalf.summary.peakLongRunKm <= 14);
+assert.ok(newRunnerHalf.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Half Marathon Rhythm"));
+assert.ok(!newRunnerHalf.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Half Marathon Pace"));
+assert.equal(newRunnerHalf.weeks.at(-1).sessions.find((session) => session.sessionType === "Race").plannedKm, 21);
+
+const newRunnerShortMarathon = engine.buildTrainingPlan({
+  ...newRunnerBase,
+  raceName: "First Marathon",
+  raceDistance: "marathon",
+  raceDate: "2026-10-14",
+});
+assert.equal(newRunnerShortMarathon.validation.errors.length, 0);
+assert.ok(newRunnerShortMarathon.validation.warnings.some((warning) => warning.includes("high risk")));
+assert.ok(newRunnerShortMarathon.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Marathon Rhythm"));
+assert.ok(!newRunnerShortMarathon.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Marathon Pace"));
+assert.equal(newRunnerShortMarathon.weeks.at(-1).sessions.find((session) => session.sessionType === "Race").plannedKm, 42);
+
+const invalid = engine.buildTrainingPlan({ ...profile, raceName: "", currentWeeklyKm: -1 });
 assert.ok(invalid.validation.errors.length >= 2);
 
 console.log(`smoke ok: ${plan.weeks.length} weeks, peak ${plan.summary.peakKm} km`);

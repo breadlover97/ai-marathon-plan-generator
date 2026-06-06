@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Race Plan Generator</title>
-    <link rel="stylesheet" href="styles.css?v=20260606-2" />
+    <link rel="stylesheet" href="styles.css?v=20260606-3" />
   </head>
   <body>
     <main class="app-shell">
@@ -90,13 +90,13 @@
             <div class="field-grid two">
               <label>
                 <span class="field-title">Current weekly distance, km <span class="field-tag required">Required</span></span>
-                <input name="currentWeeklyKm" type="number" min="1" step="0.1" required placeholder="e.g. 35" />
-                <span class="hint">Required. Average weekly running volume from the last 3-4 weeks.</span>
+                <input name="currentWeeklyKm" type="number" min="0" step="0.1" required placeholder="e.g. 0, 12, 35" />
+                <span class="hint">Required. Use 0 if you are not currently running.</span>
               </label>
               <label>
                 <span class="field-title">Longest run in last month, km <span class="field-tag required">Required</span></span>
-                <input name="longestRecentRunKm" type="number" min="1" step="0.1" required placeholder="e.g. 18" />
-                <span class="hint">Required. Helps set a safe long-run progression.</span>
+                <input name="longestRecentRunKm" type="number" min="0" step="0.1" required placeholder="e.g. 0, 3, 18" />
+                <span class="hint">Required. Use 0 if you have not run recently.</span>
               </label>
               <fieldset class="time-field">
                 <legend>Current race pace <span class="field-tag optional">Optional</span></legend>
@@ -122,6 +122,7 @@
                 <span class="field-title">Running ability <span class="field-tag required">Required</span></span>
                 <select name="runningAbility" required>
                   <option value="" selected>Choose current level</option>
+                  <option value="new">New: little or no running base</option>
                   <option value="beginner">Beginner: can run 5 km</option>
                   <option value="intermediate">Intermediate: runs regularly</option>
                   <option value="advanced">Advanced: structured workouts</option>
@@ -132,7 +133,7 @@
               </label>
               <label>
                 <span class="field-title">Max long run, km <span class="field-tag optional">Optional</span></span>
-                <input name="maxLongRunKm" type="number" min="10" step="1" placeholder="e.g. 32" />
+                <input name="maxLongRunKm" type="number" min="0" step="1" placeholder="e.g. 8, 18, 32" />
                 <span class="hint">Optional. Leave blank to let the engine choose a cap.</span>
               </label>
             </div>
@@ -331,7 +332,7 @@
         </section>
       </section>
     </main>
-    <script src="engine.js?v=20260606-2"></script>
-    <script src="app.js?v=20260606-2"></script>
+    <script src="engine.js?v=20260606-3"></script>
+    <script src="app.js?v=20260606-3"></script>
   </body>
 </html>

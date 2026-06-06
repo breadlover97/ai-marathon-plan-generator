@@ -71,6 +71,27 @@ def half_marathon_profile() -> RunnerProfile:
     )
 
 
+def new_runner_profile() -> RunnerProfile:
+    return RunnerProfile(
+        athlete_name="New Runner",
+        race_name="First 10K",
+        race_distance=RaceDistance.TEN_K,
+        start_date=date(2026, 7, 1),
+        race_date=date(2026, 9, 23),
+        current_weekly_km=0,
+        longest_recent_run_km=0,
+        runs_per_week=3,
+        running_ability=RunningAbility.NEW,
+        training_volume=TrainingVolume.GRADUAL,
+        difficulty=Difficulty.COMFORTABLE,
+        workout_day="Tuesday",
+        medium_long_day="Thursday",
+        long_run_day="Sunday",
+        strength_days=("Friday",),
+        rest_days=("Monday",),
+    )
+
+
 def test_plan_has_expected_week_count() -> None:
     plan = build_training_plan(profile())
     assert len(plan.weeks) == 21
@@ -234,3 +255,59 @@ def test_half_marathon_plan_uses_hm_specific_endurance() -> None:
     assert "Marathon Pace" not in workouts
     assert race_session.planned_km == 21
     assert all(float(session.planned_km).is_integer() for session in sessions)
+
+
+def test_new_runner_10k_starts_from_run_walk_zero_base() -> None:
+    plan = build_training_plan(new_runner_profile())
+    sessions = [session for week in plan.weeks for session in week.sessions]
+    workouts = {session.session_type for session in sessions}
+    race_session = next(session for session in plan.weeks[-1].sessions if session.session_type == "Race")
+
+    assert any("Little or no running base" in warning for warning in plan.plan_warnings)
+    assert plan.weeks[0].target_km == 3
+    assert max(session.planned_km for session in sessions if session.session_type == "Long Run") <= 8
+    assert "Run-Walk" in workouts
+    assert "10K Pace Repeats" not in workouts
+    assert not any(session.session_type.startswith("Track") for session in sessions)
+    assert race_session.planned_km == 10
+    assert all(float(session.planned_km).is_integer() for session in sessions)
+
+
+def test_new_runner_half_marathon_uses_rhythm_before_hm_pace() -> None:
+    plan = build_training_plan(
+        replace(
+            new_runner_profile(),
+            race_name="First Half Marathon",
+            race_distance=RaceDistance.HALF_MARATHON,
+            race_date=date(2026, 11, 18),
+        )
+    )
+    sessions = [session for week in plan.weeks for session in week.sessions]
+    workouts = {session.session_type for session in sessions}
+    race_session = next(session for session in plan.weeks[-1].sessions if session.session_type == "Race")
+
+    assert plan.weeks[0].target_km == 4
+    assert max(session.planned_km for session in sessions if session.session_type == "Long Run") <= 14
+    assert "Run-Walk" in workouts
+    assert "Half Marathon Rhythm" in workouts
+    assert "Half Marathon Pace" not in workouts
+    assert race_session.planned_km == 21
+
+
+def test_new_runner_short_marathon_warns_and_avoids_marathon_pace_workouts() -> None:
+    plan = build_training_plan(
+        replace(
+            new_runner_profile(),
+            race_name="First Marathon",
+            race_distance=RaceDistance.MARATHON,
+            race_date=date(2026, 10, 14),
+        )
+    )
+    sessions = [session for week in plan.weeks for session in week.sessions]
+    workouts = {session.session_type for session in sessions}
+    race_session = next(session for session in plan.weeks[-1].sessions if session.session_type == "Race")
+
+    assert any("high risk" in warning for warning in plan.plan_warnings)
+    assert "Marathon Rhythm" in workouts
+    assert "Marathon Pace" not in workouts
+    assert race_session.planned_km == 42

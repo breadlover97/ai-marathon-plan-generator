@@ -21,6 +21,7 @@ from .paces import HALF_MARATHON_KM, MARATHON_KM, TEN_K_KM, goal_pace_from_goal,
 
 
 ABILITY_PEAK_KM = {
+    RunningAbility.NEW: 45,
     RunningAbility.BEGINNER: 50,
     RunningAbility.INTERMEDIATE: 68,
     RunningAbility.ADVANCED: 88,
@@ -41,14 +42,16 @@ DIFFICULTY_LONG_RUN_QUALITY = {
 }
 
 ABILITY_RANK = {
-    RunningAbility.BEGINNER: 0,
-    RunningAbility.INTERMEDIATE: 1,
-    RunningAbility.ADVANCED: 2,
-    RunningAbility.ELITE: 3,
-    RunningAbility.ELITE_PLUS: 4,
+    RunningAbility.NEW: 0,
+    RunningAbility.BEGINNER: 1,
+    RunningAbility.INTERMEDIATE: 2,
+    RunningAbility.ADVANCED: 3,
+    RunningAbility.ELITE: 4,
+    RunningAbility.ELITE_PLUS: 5,
 }
 
 WORKOUT_LOAD = {
+    RunningAbility.NEW: {"share": 0.12, "floor": 1, "cap": 4},
     RunningAbility.BEGINNER: {"share": 0.14, "floor": 4, "cap": 7.5},
     RunningAbility.INTERMEDIATE: {"share": 0.17, "floor": 5.5, "cap": 11},
     RunningAbility.ADVANCED: {"share": 0.20, "floor": 7, "cap": 16},
@@ -57,6 +60,7 @@ WORKOUT_LOAD = {
 }
 
 MEDIUM_LONG_LOAD = {
+    RunningAbility.NEW: {"share": 0.14, "floor": 1, "cap": 7},
     RunningAbility.BEGINNER: {"share": 0.16, "floor": 6, "cap": 12},
     RunningAbility.INTERMEDIATE: {"share": 0.17, "floor": 7, "cap": 15},
     RunningAbility.ADVANCED: {"share": 0.18, "floor": 8, "cap": 18},
@@ -110,6 +114,7 @@ RACE_CONFIGS = {
         hard_long_run_cap_km=18,
         default_long_run_caps={
             RunningAbility.BEGINNER: 8,
+            RunningAbility.NEW: 8,
             RunningAbility.INTERMEDIATE: 11,
             RunningAbility.ADVANCED: 14,
             RunningAbility.ELITE: 16,
@@ -137,6 +142,7 @@ RACE_CONFIGS = {
         hard_long_run_cap_km=24,
         default_long_run_caps={
             RunningAbility.BEGINNER: 15,
+            RunningAbility.NEW: 14,
             RunningAbility.INTERMEDIATE: 18,
             RunningAbility.ADVANCED: 21,
             RunningAbility.ELITE: 23,
@@ -277,21 +283,26 @@ def _validate_profile(profile: RunnerProfile) -> list[str]:
     config = _race_config(profile)
     if profile.race_date < profile.start_date:
         raise ValueError("race_date must be after start_date")
+    total_weeks = ((profile.race_date - profile.start_date).days // 7) + 1
     if profile.runs_per_week < 3:
         warnings.append(f"Fewer than 3 runs per week is usually not enough for a {config.label} race-specific plan.")
     if profile.runs_per_week > 7:
         raise ValueError("runs_per_week cannot exceed 7")
-    if profile.current_weekly_km <= 0:
-        raise ValueError("current_weekly_km must be greater than zero")
-    if profile.longest_recent_run_km <= 0:
-        raise ValueError("longest_recent_run_km must be greater than zero")
+    if profile.current_weekly_km < 0:
+        raise ValueError("current_weekly_km must be 0 km or higher")
+    if profile.longest_recent_run_km < 0:
+        raise ValueError("longest_recent_run_km must be 0 km or higher")
     if profile.max_long_run_km is not None and profile.max_long_run_km < config.min_long_run_cap_km:
         raise ValueError(f"max_long_run_km must be at least {config.min_long_run_cap_km:g} km for a {config.label} plan")
     if profile.max_long_run_km and profile.max_long_run_km > config.hard_long_run_cap_km:
         warnings.append(f"Max long run capped at {_round_distance(config.hard_long_run_cap_km):g} km for {config.label} safety.")
-    if profile.running_ability == RunningAbility.BEGINNER and profile.difficulty == Difficulty.CHALLENGING:
-        warnings.append("Beginner plans keep workouts conservative even when difficulty is challenging.")
-    if profile.longest_recent_run_km > profile.current_weekly_km * 0.75:
+    if _low_base_profile(profile):
+        warnings.append("Little or no running base detected. The plan starts with run-walk volume and keeps workouts effort-based until consistency is established.")
+        if config.key == RaceDistance.MARATHON and total_weeks < 24:
+            warnings.append("A marathon from little or no base is high risk on this timeline. Extend the plan if possible, or consider a 10K/half-marathon stepping stone.")
+    if profile.running_ability in {RunningAbility.NEW, RunningAbility.BEGINNER} and profile.difficulty == Difficulty.CHALLENGING:
+        warnings.append("New and beginner plans keep workouts conservative even when difficulty is challenging.")
+    if profile.current_weekly_km > 0 and profile.longest_recent_run_km > profile.current_weekly_km * 0.75:
         warnings.append("Longest recent run is high relative to weekly distance. Build weeks will stay conservative.")
     days = {profile.workout_day, profile.medium_long_day, profile.long_run_day, *profile.strength_days, *profile.rest_days}
     unknown = sorted(day for day in days if day not in WEEKDAYS)
@@ -315,11 +326,13 @@ def _validate_profile(profile: RunnerProfile) -> list[str]:
 
 def _weekly_targets(profile: RunnerProfile, total_weeks: int) -> list[float]:
     config = _race_config(profile)
+    raw_current = _current_weekly_km(profile)
+    current = _planning_start_km(profile, config)
     peak_cap = ABILITY_PEAK_KM[profile.running_ability] * VOLUME_MULTIPLIER[profile.training_volume] * config.peak_scale
     natural_peak = profile.current_weekly_km * (config.natural_peak_long if total_weeks >= 14 else config.natural_peak_short)
     long_run_peak_floor = _effective_long_run_cap(profile) / config.long_run_target_share
-    peak = min(peak_cap, max(profile.current_weekly_km * 1.15, natural_peak, long_run_peak_floor))
-    start = max(profile.current_weekly_km * 0.95, profile.current_weekly_km - 5)
+    peak = min(peak_cap, max(current * 1.15, natural_peak, long_run_peak_floor))
+    start = current if _low_base_profile(profile) else max(raw_current * 0.95, raw_current - 5)
 
     taper_weeks = _taper_weeks(profile, total_weeks)
     build_weeks = max(total_weeks - taper_weeks, 1)
@@ -332,12 +345,13 @@ def _weekly_targets(profile: RunnerProfile, total_weeks: int) -> list[float]:
         if week % 4 == 0 and week < build_weeks:
             target = max(start * 0.92, last_build * 0.82)
         else:
-            target = min(ideal, last_build * 1.08)
+            max_build_step = _low_base_weekly_step(config) if _low_base_profile(profile) else last_build * 0.08
+            target = min(ideal, last_build + max(max_build_step, last_build * 0.08))
             last_build = target
         target = max(target, start * 0.88)
         targets.append(round(target, 1))
 
-    taper = _taper_targets(config, peak, taper_weeks)
+    taper = _taper_targets(profile, config, peak, taper_weeks)
     targets.extend(round(value, 1) for value in taper)
     return targets[:total_weeks]
 
@@ -345,7 +359,8 @@ def _weekly_targets(profile: RunnerProfile, total_weeks: int) -> list[float]:
 def _long_run_targets(profile: RunnerProfile, weekly_targets: list[float], total_weeks: int) -> list[float]:
     config = _race_config(profile)
     cap = _effective_long_run_cap(profile)
-    start = min(max(profile.longest_recent_run_km + _long_run_start_add(config), profile.longest_recent_run_km * 1.1), cap)
+    recent = _planning_recent_long_run_km(profile, config)
+    start = min(max(recent + _long_run_start_add(profile, config), recent * 1.1), cap)
     taper_weeks = _taper_weeks(profile, total_weeks)
     build_weeks = max(total_weeks - taper_weeks, 1)
     long_runs: list[float] = []
@@ -386,6 +401,56 @@ def _race_config(profile: RunnerProfile) -> RaceConfig:
     return RACE_CONFIGS.get(profile.race_distance, RACE_CONFIGS[RaceDistance.MARATHON])
 
 
+def _current_weekly_km(profile: RunnerProfile) -> float:
+    return profile.current_weekly_km if math.isfinite(profile.current_weekly_km) and profile.current_weekly_km > 0 else 0
+
+
+def _recent_long_run_km(profile: RunnerProfile) -> float:
+    return profile.longest_recent_run_km if math.isfinite(profile.longest_recent_run_km) and profile.longest_recent_run_km > 0 else 0
+
+
+def _low_base_profile(profile: RunnerProfile) -> bool:
+    return profile.running_ability == RunningAbility.NEW or _current_weekly_km(profile) < 5 or _recent_long_run_km(profile) < 3
+
+
+def _planning_start_km(profile: RunnerProfile, config: RaceConfig) -> float:
+    current = _current_weekly_km(profile)
+    if not _low_base_profile(profile):
+        return current
+    if config.key == RaceDistance.TEN_K:
+        return max(current, 3)
+    if config.key == RaceDistance.HALF_MARATHON:
+        return max(current, 4)
+    return max(current, 5)
+
+
+def _planning_recent_long_run_km(profile: RunnerProfile, config: RaceConfig) -> float:
+    recent = _recent_long_run_km(profile)
+    if not _low_base_profile(profile):
+        return recent
+    if config.key == RaceDistance.TEN_K:
+        return max(recent, 1)
+    if config.key == RaceDistance.HALF_MARATHON:
+        return max(recent, 2)
+    return max(recent, 3)
+
+
+def _low_base_weekly_step(config: RaceConfig) -> float:
+    if config.key == RaceDistance.TEN_K:
+        return 2
+    if config.key == RaceDistance.HALF_MARATHON:
+        return 2.5
+    return 3
+
+
+def _low_base_race_week_floor(config: RaceConfig) -> float:
+    if config.key == RaceDistance.TEN_K:
+        return 3
+    if config.key == RaceDistance.HALF_MARATHON:
+        return 5
+    return 6
+
+
 def _taper_weeks(profile: RunnerProfile, total_weeks: int) -> int:
     config = _race_config(profile)
     if config.key == RaceDistance.MARATHON:
@@ -395,8 +460,10 @@ def _taper_weeks(profile: RunnerProfile, total_weeks: int) -> int:
     return 2 if total_weeks >= 7 else 1
 
 
-def _taper_targets(config: RaceConfig, peak: float, taper_weeks: int) -> list[float]:
-    race_week_target = max(config.distance_km + config.race_week_volume_floor, peak * config.race_week_volume_share)
+def _taper_targets(profile: RunnerProfile, config: RaceConfig, peak: float, taper_weeks: int) -> list[float]:
+    race_week_floor = _low_base_race_week_floor(config) if _low_base_profile(profile) else config.race_week_volume_floor
+    race_week_share = min(config.race_week_volume_share, 0.45) if _low_base_profile(profile) else config.race_week_volume_share
+    race_week_target = max(config.distance_km + race_week_floor, peak * race_week_share)
     if taper_weeks == 3:
         return [peak * 0.72, peak * 0.50, race_week_target]
     if taper_weeks == 2:
@@ -413,7 +480,9 @@ def _taper_long_runs(config: RaceConfig, cap: float, taper_weeks: int) -> list[f
     return [race_distance]
 
 
-def _long_run_start_add(config: RaceConfig) -> float:
+def _long_run_start_add(profile: RunnerProfile, config: RaceConfig) -> float:
+    if _low_base_profile(profile):
+        return 1
     if config.key == RaceDistance.TEN_K:
         return 2
     if config.key == RaceDistance.HALF_MARATHON:
@@ -546,6 +615,14 @@ def _workout_type(profile: RunnerProfile, phase: str, week_number: int, race_wee
     config = _race_config(profile)
     if race_week:
         return "Sharpen"
+    if profile.running_ability == RunningAbility.NEW:
+        if phase == "Base Build":
+            return "Run-Walk"
+        if phase == config.build_phase:
+            return _cycle(["Run-Walk", "Easy Strides", "Steady Intro", "Run-Walk"], week_number)
+        if phase == "Race Specific":
+            return _cycle([_race_rhythm_type(config), "Run-Walk", "Easy Strides", "Steady Intro"], week_number)
+        return "Run-Walk"
     if profile.running_ability == RunningAbility.BEGINNER:
         if phase == "Base Build":
             return _cycle(["Easy Strides", "Short Fartlek", "Intro Track Strides", "Steady Intro"], week_number)
@@ -589,11 +666,11 @@ def _workout_type(profile: RunnerProfile, phase: str, week_number: int, race_wee
     if phase == "Base Build":
         return _cycle(["Easy Strides", "Tempo Intro", "Track 400s", "Steady-State"], week_number)
     if phase == config.build_phase:
-        if ABILITY_RANK[profile.running_ability] >= 3:
+        if ABILITY_RANK[profile.running_ability] >= 4:
             return _cycle(["Track 1K Repeats", "Tempo", "Hill Repeats", "Threshold"], week_number)
         return _cycle(["Track 800s", "Tempo", "Hill Repeats", "Cruise Intervals"], week_number)
     if phase == "Race Specific":
-        if ABILITY_RANK[profile.running_ability] >= 3:
+        if ABILITY_RANK[profile.running_ability] >= 4:
             return _cycle(["Marathon Pace", "Track 1600s", "Tempo", "Track 1K Repeats"], week_number)
         return _cycle(["Marathon Pace", "Track 1K Repeats", "Tempo", "Track 800s"], week_number)
     return "Sharpen"
@@ -617,8 +694,10 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
     tempo_band = pace_band(goal_pace, *config.tempo_band)
     interval_band = pace_band(goal_pace, *config.interval_band)
     rank = ABILITY_RANK[profile.running_ability]
-    conservative = rank <= 1 or profile.difficulty == Difficulty.COMFORTABLE
+    conservative = rank <= 2 or profile.difficulty == Difficulty.COMFORTABLE
     challenging = profile.difficulty == Difficulty.CHALLENGING
+    if session_type == "Run-Walk":
+        return "Run-walk: repeat 2-4 min very easy jog + 1-2 min walk; stop while it still feels controlled (RPE 3-4/10)"
     if session_type == "Easy Strides":
         return f"Easy run + 6 x 20 sec relaxed strides, full easy recoveries ({easy_band})"
     if session_type == "Intro Track Strides":
@@ -638,13 +717,13 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
     if session_type == "Tempo Intro":
         if conservative:
             return f"WU + 3 x 5 min steady-tempo, 3 min easy, CD ({tempo_band})"
-        if rank >= 3 and challenging:
+        if rank >= 4 and challenging:
             return f"WU + 3 x 8 min tempo, 3 min jog, CD ({tempo_band})"
         return f"WU + 2 x 10 min controlled tempo, 4 min jog, CD ({tempo_band})"
     if session_type == "Cruise Intervals":
         if conservative:
             return f"WU + 5 x 3 min controlled threshold, 2 min easy, CD ({tempo_band})"
-        if rank >= 3 and challenging:
+        if rank >= 4 and challenging:
             return f"WU + 6 x 1 km threshold, 90 sec jog, CD ({tempo_band})"
         return f"WU + 4 x 1 km threshold, 90 sec jog, CD ({tempo_band})"
     if session_type == "Track 400s":
@@ -654,32 +733,32 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
     if session_type == "Track 800s":
         if conservative:
             return f"Track: WU + 5 x 800 m controlled, 400 m jog, CD ({interval_band})"
-        reps = 8 if rank >= 3 and challenging else 6
+        reps = 8 if rank >= 4 and challenging else 6
         return f"Track: WU + {reps} x 800 m at 10K effort, 400 m jog, CD ({interval_band})"
     if session_type == "Track 1K Repeats":
         if conservative:
             return f"Track: WU + 4 x 1 km controlled, 2 min jog, CD ({interval_band})"
-        reps = 6 if rank >= 3 and challenging else 5
+        reps = 6 if rank >= 4 and challenging else 5
         return f"Track: WU + {reps} x 1 km at 10K effort, 2 min jog, CD ({interval_band})"
     if session_type == "Track 1600s":
-        reps = 4 if rank >= 3 and challenging else 3
+        reps = 4 if rank >= 4 and challenging else 3
         return f"Track: WU + {reps} x 1600 m controlled threshold, 400 m jog, CD ({tempo_band})"
     if session_type == "10K Pace Repeats":
         if conservative:
             return f"WU + 6 x 2 min at controlled 10K effort, 2 min easy, CD ({goal_pace or 'RPE 7/10'})"
-        if rank >= 3 and challenging:
+        if rank >= 4 and challenging:
             return f"Track: WU + 5 x 1 km at 10K effort, 2 min jog, CD ({goal_pace or 'RPE 7-8/10'})"
         return f"Track: WU + 4 x 1 km at 10K effort, 2 min jog, CD ({goal_pace or 'RPE 7/10'})"
     if session_type == "Half Marathon Pace":
         if conservative:
             return f"WU + 3 x 8 min half-marathon rhythm, 3 min easy, CD ({goal_pace or 'RPE 6/10'})"
-        if rank >= 3 and challenging:
+        if rank >= 4 and challenging:
             return f"WU + 3 x 3 km at half-marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
         return f"WU + 2 x 3 km at half-marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
     if session_type == "Threshold":
         if conservative:
             return f"WU + 5 x 3 min controlled threshold, 2 min easy, CD ({tempo_band})"
-        if rank >= 3 and challenging:
+        if rank >= 4 and challenging:
             return f"WU + 4 x 2 km controlled threshold, jog recoveries, CD ({tempo_band})"
         if profile.difficulty == Difficulty.BALANCED:
             return f"WU + 3 x 1.5 km controlled threshold, jog recoveries, CD ({tempo_band})"
@@ -687,7 +766,7 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
     if session_type == "Tempo":
         if conservative:
             return f"WU + 3 x 6 min controlled steady effort, 3 min easy, CD ({tempo_band})"
-        if rank >= 3 and challenging:
+        if rank >= 4 and challenging:
             return f"WU + 3 x 15 min tempo, 4 min jog, CD ({tempo_band})"
         if profile.difficulty == Difficulty.BALANCED:
             return f"WU + 2 x 12 min tempo, 4 min jog, CD ({tempo_band})"
@@ -695,13 +774,13 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
     if session_type == "Steady-State":
         if conservative:
             return f"WU + 3 x 8 min steady, 3 min jog, CD ({easy_band})"
-        if rank >= 3 and challenging:
+        if rank >= 4 and challenging:
             return f"WU + 2 x 20 min steady, 5 min jog, CD ({easy_band})"
         return f"WU + 2 x 15 min steady, 5 min jog, CD ({easy_band})"
     if session_type == "Intervals":
         if conservative:
             return f"WU + 6 x 400 m controlled, 400 m easy, CD ({interval_band})"
-        reps = 8 if rank >= 3 and challenging else 6
+        reps = 8 if rank >= 4 and challenging else 6
         return f"WU + {reps} x 800 m controlled reps, 400 m jog, CD ({interval_band})"
     if session_type == "Hill Repeats":
         if conservative:
@@ -710,7 +789,7 @@ def _workout_plan(profile: RunnerProfile, session_type: str, phase: str, goal_pa
     if session_type == "Marathon Pace":
         if conservative:
             return f"WU + 3 x 8 min marathon rhythm, 3 min easy, CD ({goal_pace or 'RPE 6/10'})"
-        if rank >= 3 and challenging:
+        if rank >= 4 and challenging:
             return f"WU + 3 x 5 km at marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
         if profile.difficulty == Difficulty.BALANCED:
             return f"WU + 2 x 4 km at marathon effort, 1 km easy, CD ({goal_pace or 'RPE 6-7/10'})"
@@ -725,6 +804,8 @@ def _easy_plan(week_number: int) -> str:
 
 
 def _medium_long_plan(profile: RunnerProfile, phase: str) -> str:
+    if profile.running_ability == RunningAbility.NEW:
+        return "Short easy run-walk, conversational throughout"
     if profile.running_ability == RunningAbility.BEGINNER or profile.difficulty == Difficulty.COMFORTABLE:
         return "Medium-long easy, conversational throughout"
     if phase == "Race Specific":
@@ -740,6 +821,8 @@ def _long_run_plan(profile: RunnerProfile, phase: str, week_number: int, total_w
         return f"{_format_km(_round_distance(config.distance_km))} km race day: execute {config.race_execution}"
     if phase == "Base Build":
         return f"{_format_km(distance)} km easy, no pace pressure"
+    if profile.running_ability == RunningAbility.NEW:
+        return f"{_format_km(distance)} km run-walk easy; keep breathing controlled and finish fresh"
     if profile.running_ability == RunningAbility.BEGINNER or profile.difficulty == Difficulty.COMFORTABLE:
         if phase in {config.build_phase, "Race Specific"}:
             return f"{_format_km(distance)} km easy with relaxed race-specific awareness; keep the finish controlled"
@@ -759,11 +842,11 @@ def _long_run_plan(profile: RunnerProfile, phase: str, week_number: int, total_w
         return f"{_format_km(distance)} km easy with hydration practice"
     quality_share = DIFFICULTY_LONG_RUN_QUALITY[profile.difficulty]
     if phase == "Race Specific" and week_number % 2 == 1:
-        minimum_block = 4 if ABILITY_RANK[profile.running_ability] <= 1 else 6
+        minimum_block = 4 if ABILITY_RANK[profile.running_ability] <= 2 else 6
         mp_block = max(minimum_block, round(distance * quality_share * 0.35))
         return f"{_format_km(distance)} km with {mp_block} km total at marathon effort ({goal_pace or 'RPE 6-7/10'})"
     if week_number % 3 == 0:
-        steady_finish = 3 if ABILITY_RANK[profile.running_ability] <= 1 else 5
+        steady_finish = 3 if ABILITY_RANK[profile.running_ability] <= 2 else 5
         return f"{_format_km(distance)} km progression, last {steady_finish} km steady"
     return f"{_format_km(distance)} km easy with fueling test"
 

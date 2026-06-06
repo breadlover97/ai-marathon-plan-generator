@@ -61,6 +61,17 @@ General limits:
 - Build weeks should rarely increase more than 8-10%.
 - Deload weeks intentionally reduce distance.
 - Shorter plans may need faster progression, but should warn the user when the race date is too soon.
+- Ability-based weekly volume caps prevent the engine from chasing a race goal with unrealistic mileage. The cap is a safety ceiling tied to current ability, race distance, and selected volume style; if the long-run target cannot be supported by weekly volume, the engine should reduce the long run rather than inflate the week.
+
+## Low-base runners
+
+The engine must support runners coming from little or no recent running:
+
+- 0 km/week and 0 km longest recent run are valid inputs.
+- The `new` runner level starts from small run-walk weeks instead of applying normal workout floors.
+- Early sessions should use RPE and run-walk instructions, not exact pace targets or track-heavy prescriptions.
+- Low-base race weeks add minimal non-race mileage because the race itself is already the main stress.
+- Marathon plans from little/no base should warn when the runway is short, especially under 24 weeks.
 
 ## Workout distribution
 
