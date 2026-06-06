@@ -28,7 +28,7 @@
     "goal_description": { "type": "string" },
     "current_weekly_km": { "type": "number", "minimum": 0 },
     "longest_recent_run_km": { "type": "number", "minimum": 0 },
-    "current_marathon_pace": { "type": ["string", "null"], "description": "MM:SS per km or null" },
+    "current_marathon_pace": { "type": ["string", "null"], "description": "Current race-pace estimate in MM:SS per km, or null" },
     "runs_per_week": { "type": "integer", "minimum": 3, "maximum": 7 },
     "running_ability": {
       "type": "string",

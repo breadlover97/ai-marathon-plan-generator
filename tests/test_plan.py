@@ -3,7 +3,7 @@ from datetime import date
 
 import pytest
 
-from marathon_generator.models import Difficulty, RunnerProfile, RunningAbility, TrainingVolume
+from marathon_generator.models import Difficulty, RaceDistance, RunnerProfile, RunningAbility, TrainingVolume
 from marathon_generator.plan import build_training_plan
 
 
@@ -37,6 +37,37 @@ def beginner_profile() -> RunnerProfile:
         training_volume=TrainingVolume.GRADUAL,
         difficulty=Difficulty.BALANCED,
         goal_description="Finish comfortably",
+    )
+
+
+def ten_k_profile() -> RunnerProfile:
+    return RunnerProfile(
+        athlete_name="Runner",
+        race_name="City 10K",
+        race_distance=RaceDistance.TEN_K,
+        start_date=date(2026, 7, 1),
+        race_date=date(2026, 9, 23),
+        current_weekly_km=35,
+        longest_recent_run_km=12,
+        runs_per_week=5,
+        running_ability=RunningAbility.INTERMEDIATE,
+        training_volume=TrainingVolume.STEADY,
+        difficulty=Difficulty.BALANCED,
+        goal_time="00:45:00",
+        workout_day="Tuesday",
+        medium_long_day="Thursday",
+        long_run_day="Sunday",
+        strength_days=("Friday",),
+        rest_days=("Monday",),
+    )
+
+
+def half_marathon_profile() -> RunnerProfile:
+    return replace(
+        ten_k_profile(),
+        race_name="City Half Marathon",
+        race_distance=RaceDistance.HALF_MARATHON,
+        goal_time="01:45:00",
     )
 
 
@@ -168,3 +199,38 @@ def test_beginner_plan_avoids_advanced_quality_templates() -> None:
         "Sharpen",
     }
     assert {"Track 400s", "Track 800s", "Track 1K Repeats", "Track 1600s"}.isdisjoint(beginner_workouts)
+
+
+def test_10k_plan_uses_speed_endurance_not_marathon_workouts() -> None:
+    plan = build_training_plan(ten_k_profile())
+    sessions = [session for week in plan.weeks for session in week.sessions]
+    workouts = {session.session_type for session in sessions}
+    race_week = plan.weeks[-1]
+    race_session = next(session for session in race_week.sessions if session.session_type == "Race")
+
+    assert plan.race_label == "10K"
+    assert plan.goal_pace_per_km == "4:30 / km"
+    assert any(week.phase == "Speed Build" for week in plan.weeks)
+    assert max(session.planned_km for session in sessions if session.session_type == "Long Run") <= 18
+    assert "10K Pace Repeats" in workouts
+    assert "Marathon Pace" not in workouts
+    assert race_session.day == "Wednesday"
+    assert race_session.planned_km == 10
+    assert all(session.session_type == "Rest" for session in race_week.sessions[3:])
+    assert all(float(session.planned_km).is_integer() for session in sessions)
+
+
+def test_half_marathon_plan_uses_hm_specific_endurance() -> None:
+    plan = build_training_plan(half_marathon_profile())
+    sessions = [session for week in plan.weeks for session in week.sessions]
+    workouts = {session.session_type for session in sessions}
+    race_session = next(session for session in plan.weeks[-1].sessions if session.session_type == "Race")
+
+    assert plan.race_label == "Half Marathon"
+    assert plan.goal_pace_per_km == "4:59 / km"
+    assert any(week.phase == "Endurance Build" for week in plan.weeks)
+    assert max(session.planned_km for session in sessions if session.session_type == "Long Run") <= 24
+    assert "Half Marathon Pace" in workouts
+    assert "Marathon Pace" not in workouts
+    assert race_session.planned_km == 21
+    assert all(float(session.planned_km).is_integer() for session in sessions)

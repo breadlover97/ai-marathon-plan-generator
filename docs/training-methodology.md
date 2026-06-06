@@ -74,13 +74,13 @@ The generator uses these rough shares for a 5-run week:
 
 ## Intensity and pace model
 
-Paces are anchored to target marathon pace or a predicted marathon pace from a recent race.
+Paces are anchored to target race pace for the selected distance, or to effort/RPE when no goal time is provided.
 
-- Easy: conversational, roughly 125-145% of marathon pace.
-- Steady: controlled aerobic work, roughly 110-118%.
-- Marathon pace: goal pace.
-- Tempo: comfortably hard, roughly 92-97%.
-- Intervals: harder reps, roughly 85-90%.
+- Easy: conversational, with race-specific pace bands that stay clearly below threshold.
+- Steady: controlled aerobic work below threshold.
+- Race pace: goal pace for the selected race distance.
+- Tempo: comfortably hard, with bands adjusted by race distance.
+- Intervals: harder reps, with 10K, half-marathon, and marathon plans using different pace anchors.
 
 The product should let users switch to RPE when terrain, heat, or fatigue makes exact pace less useful.
 

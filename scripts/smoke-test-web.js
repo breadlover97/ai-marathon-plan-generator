@@ -38,6 +38,7 @@ assert.ok(plan.weeks.every((week) => week.sessions.every((session) => Number.isF
 assert.ok(plan.weeks.every((week) => week.sessions.every((session) => Number.isInteger(session.plannedKm))));
 assert.ok(plan.summary.peakKm <= 92);
 assert.ok(plan.summary.peakKm > 70);
+assert.ok(plan.summary.raceWeekKm < plan.summary.peakKm);
 assert.equal(plan.summary.longRunCapKm, 34);
 assert.equal(plan.summary.peakLongRunKm, 34);
 assert.equal(Math.max(...plan.weeks.slice(0, -1).map((week) => week.sessions.find((session) => session.sessionType === "Long Run").plannedKm)), 34);
@@ -107,6 +108,7 @@ assert.equal(tenKRaceSession.day, "Wednesday");
 assert.equal(tenKRaceSession.plannedKm, 10);
 assert.ok(tenKPlan.weeks.every((week) => week.sessions.every((session) => Number.isInteger(session.plannedKm))));
 assert.ok(tenKRaceWeek.sessions.slice(3).every((session) => session.sessionType === "Rest"));
+assert.ok(tenKPlan.summary.raceWeekKm < tenKPlan.summary.peakKm);
 assert.ok(engine.planToTsv(tenKPlan).startsWith("\t10K Training Plan"));
 
 const halfProfile = {
@@ -123,8 +125,12 @@ assert.equal(halfPlan.goalPacePerKm, "4:59 / km");
 assert.ok(halfPlan.weeks.some((week) => week.phase === "Endurance Build"));
 assert.ok(halfPlan.summary.peakLongRunKm <= 24);
 assert.ok(halfPlan.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Half Marathon Pace"));
+assert.ok(!halfPlan.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Marathon Pace"));
+assert.ok(halfPlan.summary.raceWeekKm < halfPlan.summary.peakKm);
+const halfRaceWeek = halfPlan.weeks.at(-1);
 const halfRaceSession = halfPlan.weeks.at(-1).sessions.find((session) => session.sessionType === "Race");
 assert.equal(halfRaceSession.plannedKm, 21);
+assert.ok(halfRaceWeek.sessions.slice(3).every((session) => session.sessionType === "Rest"));
 assert.ok(halfPlan.weeks.every((week) => week.sessions.every((session) => Number.isInteger(session.plannedKm))));
 assert.ok(engine.planToTsv(halfPlan).startsWith("\tHalf Marathon Training Plan"));
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from math import pow
 
+TEN_K_KM = 10.0
+HALF_MARATHON_KM = 21.0975
 MARATHON_KM = 42.195
 
 
@@ -38,10 +40,14 @@ def format_duration(total_seconds: float) -> str:
     return f"{hours}:{minutes:02d}:{secs:02d}"
 
 
-def marathon_pace_from_goal(goal_time: str | None) -> str | None:
+def goal_pace_from_goal(goal_time: str | None, race_distance_km: float) -> str | None:
     if not goal_time:
         return None
-    return format_pace(parse_hhmmss(goal_time) / MARATHON_KM)
+    return format_pace(parse_hhmmss(goal_time) / race_distance_km)
+
+
+def marathon_pace_from_goal(goal_time: str | None) -> str | None:
+    return goal_pace_from_goal(goal_time, MARATHON_KM)
 
 
 def riegel_predict(seconds: int, from_distance_km: float, to_distance_km: float) -> int:
@@ -53,4 +59,3 @@ def pace_band(anchor_pace: str | None, low_factor: float, high_factor: float) ->
         return "by RPE"
     pace_seconds = parse_pace(anchor_pace.replace(" / km", ""))
     return f"{format_pace(pace_seconds * low_factor)} to {format_pace(pace_seconds * high_factor)}"
-

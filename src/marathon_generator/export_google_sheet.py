@@ -58,8 +58,8 @@ def _set_layout(sheet) -> None:
 def _write_header(sheet, plan: TrainingPlan) -> None:
     profile = plan.profile
     rows = [
-        ("SCKL-style Marathon Training Plan", "", "", "", "", "", "", "", "", "", "Race", profile.race_name, "", "", "", ""),
-        ("Start", profile.start_date, "", "Race Day", profile.race_date, "", "Flag-off", "", "", "", "Goal", profile.goal_description, "", "", "", ""),
+        (plan.plan_title, "", "", "", "", "", "", "", "", "", "Race", profile.race_name, "", "", "", ""),
+        ("Start", profile.start_date, "", "Race Day", profile.race_date, "", "Distance", plan.race_label, "", "", "Goal", profile.goal_description, "", "", "", ""),
         (
             "Current baseline",
             f"{profile.current_weekly_km:g} km/week; {profile.longest_recent_run_km:g} km long run",
@@ -67,7 +67,7 @@ def _write_header(sheet, plan: TrainingPlan) -> None:
             "Goal pace",
             plan.goal_pace_per_km or "Not set",
             "",
-            "Current MP",
+            "Current pace",
             profile.current_marathon_pace or "Not set",
             "",
             "",
@@ -185,7 +185,6 @@ def _write_weeks(sheet, plan: TrainingPlan) -> None:
             ("Notes", week.notes, "Adjust", week.adjust_note),
             ("Strength", week.strength_note, "Fuel", week.fuel_note),
             ("Risk", week.risk_note, "Race Fit", week.race_fit),
-            ("Admin", plan.profile.admin_notes, "", ""),
         ]
         for row_offset, (label1, value1, label2, value2) in enumerate(side_items, start=0):
             row = week_row + row_offset
@@ -223,4 +222,3 @@ def _body(cell) -> None:
 def _border(cell) -> None:
     side = Side(style="thin", color=BORDER)
     cell.border = Border(left=side, right=side, top=side, bottom=side)
-
