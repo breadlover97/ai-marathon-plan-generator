@@ -5,21 +5,24 @@ This generator uses a coach-designed deterministic structure. AI can help interp
 ## Core rules
 
 - Start from the runner's current sustainable weekly mileage, not from the target race alone.
+- Treat race distance as a primary input. A 10K plan, half-marathon plan, and marathon plan should not share the same long-run cap, taper, or race-specific workout mix.
 - Build with progressive overload.
 - Keep most running easy.
 - Start each plan with controlled quality, even for advanced runners.
 - Add deload weeks every 3-5 weeks.
 - Taper before race day.
-- Cap the longest run around 75-80% of marathon distance unless a coach deliberately overrides it.
+- Cap the longest run according to race distance and runner profile.
 - Prefer reducing volume before increasing intensity when fatigue, pain, heat, or life stress rises.
 
 ## Phase model
 
-For a marathon plan of 16-26 weeks:
+For race plans:
 
 - Base: re-establish routine, aerobic volume, strides, light threshold.
-- Build: progressive mileage, medium-long runs, threshold and tempo.
-- Specific: marathon-pace work, fueling practice, long-run quality.
+- 10K Speed Build: progressive mileage, controlled track/interval exposure, hills, and tempo support.
+- Half Marathon Endurance Build: progressive mileage, threshold work, medium-long runs, and half-marathon rhythm.
+- Marathon Build: progressive mileage, medium-long runs, threshold/tempo, and durability.
+- Specific: race-pace work and distance-specific long-run quality.
 - Taper: reduce volume, keep controlled intensity, arrive fresh.
 
 Ability and difficulty adjust what "quality" means:
@@ -105,6 +108,22 @@ Long runs rotate through:
 - race-pace practice
 
 Race-pace long runs appear mainly in the specific phase and are scaled down for intermediate runners. Beginner and comfortable profiles should stay easy-first and use long runs for durability and fueling practice before pace pressure.
+
+Generated session distances are rounded to the nearest whole kilometre for practical planning and cleaner Google Sheets exports. Exact race distances are still used for pace calculations, but the displayed planned distance uses the whole-km convention.
+
+Distance-specific long-run intent:
+
+- 10K: long runs can exceed race distance, but they stay primarily aerobic. Race-specific work belongs in shorter quality sessions, with occasional short rhythm pickups inside long runs.
+- Half marathon: long runs usually progress toward roughly 15-21 km depending on ability and weekly volume. Specific long runs may include controlled half-marathon-effort blocks.
+- Marathon: long runs are capped around 75-80% of marathon distance unless a coach deliberately overrides it. Specific long runs may include marathon-effort blocks and fueling practice.
+
+## Race-week model
+
+- Race day is placed on the actual race date, not the preferred long-run day.
+- If race day is midweek, post-race days are rest/recovery in the generated plan.
+- 10K race week keeps only a short sharpening session plus easy running before race day.
+- Half marathon race week preserves freshness while retaining small aerobic touches before race day.
+- Marathon race week prioritizes freshness, sleep, fueling, and simple execution.
 
 ## Research review
 

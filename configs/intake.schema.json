@@ -1,10 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "MarathonPlanIntake",
+  "title": "RacePlanIntake",
   "type": "object",
   "required": [
     "athlete_name",
     "race_name",
+    "race_distance",
     "start_date",
     "race_date",
     "current_weekly_km",
@@ -17,6 +18,10 @@
   "properties": {
     "athlete_name": { "type": "string" },
     "race_name": { "type": "string" },
+    "race_distance": {
+      "type": "string",
+      "enum": ["10k", "half_marathon", "marathon"]
+    },
     "start_date": { "type": "string", "format": "date" },
     "race_date": { "type": "string", "format": "date" },
     "goal_time": { "type": ["string", "null"], "description": "HH:MM:SS or null" },
@@ -59,4 +64,3 @@
     }
   }
 }
-

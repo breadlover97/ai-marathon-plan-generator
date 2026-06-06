@@ -4,6 +4,7 @@ const engine = require("../docs/engine.js");
 const profile = {
   athleteName: "Tai Zhi",
   raceName: "Standard Chartered Kuala Lumpur Marathon 2026",
+  raceDistance: "marathon",
   startDate: "2026-05-11",
   raceDate: "2026-10-04",
   goalTime: "02:50:00",
@@ -34,6 +35,7 @@ assert.equal(plan.weeks.length, 21);
 assert.equal(plan.weeks.at(-1).phase, "Taper");
 assert.ok(plan.weeks.every((week) => Number.isFinite(week.targetKm)));
 assert.ok(plan.weeks.every((week) => week.sessions.every((session) => Number.isFinite(session.plannedKm) && session.plannedKm >= 0)));
+assert.ok(plan.weeks.every((week) => week.sessions.every((session) => Number.isInteger(session.plannedKm))));
 assert.ok(plan.summary.peakKm <= 92);
 assert.ok(plan.summary.peakKm > 70);
 assert.equal(plan.summary.longRunCapKm, 34);
@@ -42,8 +44,8 @@ assert.equal(Math.max(...plan.weeks.slice(0, -1).map((week) => week.sessions.fin
 assert.ok(plan.goalPacePerKm.includes("4:02"));
 const raceSession = plan.weeks.at(-1).sessions.find((session) => session.sessionType === "Race");
 assert.equal(raceSession.day, "Sunday");
-assert.equal(raceSession.plannedKm, 42.2);
-assert.equal(plan.weeks.at(-1).longRunSummary, "42.2 km race");
+assert.equal(raceSession.plannedKm, 42);
+assert.equal(plan.weeks.at(-1).longRunSummary, "42 km race");
 const tsv = engine.planToTsv(plan);
 const firstWorkout = plan.weeks[0].sessions.find((session) => !["Rest", "Strength", "Easy Run", "Medium-Long", "Long Run", "Race"].includes(session.sessionType));
 assert.equal(firstWorkout.sessionType, "Easy Strides");
@@ -61,15 +63,70 @@ assert.ok(workoutTypes.has("Track 1K Repeats"));
 assert.ok(tsv.includes("\tMarathon Training Plan"));
 assert.ok(tsv.includes("\tWeek 1\t11 May\t12 May\t13 May\t14 May\t15 May\t16 May\t17 May"));
 assert.ok(tsv.includes("\tType\tEasy Strides\tEasy Run\tMedium-Long\tStrength"));
-assert.ok(tsv.includes("\tDistance (km)\t10\t4\t9\t0\t4\t22.5\t0\t=SUM(C15:I15)"));
+assert.ok(tsv.includes("\tDistance (km)\t10\t4\t9\t0\t4\t23\t0\t=SUM(C15:I15)"));
 assert.ok(tsv.includes("\tType\tSharpen\tEasy Run\tEasy Run\tStrength\tEasy Run\tRest\tRace"));
-assert.ok(tsv.includes("\tDistance (km)\t6\t2\t2\t0\t2\t0\t42.2\t=SUM(C215:I215)"));
+assert.ok(tsv.includes("\tDistance (km)\t6\t2\t2\t0\t2\t0\t42\t=SUM(C215:I215)"));
 assert.ok(tsv.includes("\tActual\t"));
 assert.ok(tsv.includes("\tRemarks\t"));
 assert.ok(tsv.includes("=SUM(C15:I15)"));
 assert.ok(engine.planToCsv(plan).includes('"","Marathon Training Plan"'));
 assert.ok(!/\b(Focus|Fuel|Risk|Adjust)\b/.test(tsv));
 assert.equal((tsv.match(/\bAdmin\b/g) || []).length, 1);
+
+const tenKProfile = {
+  ...profile,
+  raceName: "City 10K",
+  raceDistance: "10k",
+  startDate: "2026-07-01",
+  raceDate: "2026-09-23",
+  goalTime: "00:45:00",
+  currentWeeklyKm: 35,
+  longestRecentRunKm: 12,
+  currentMarathonPace: "04:45",
+  runningAbility: "intermediate",
+  trainingVolume: "steady",
+  difficulty: "balanced",
+  workoutDay: "Tuesday",
+  mediumLongDay: "Thursday",
+  longRunDay: "Sunday",
+  strengthDays: ["Friday"],
+  restDays: ["Monday"],
+  maxLongRunKm: "",
+};
+const tenKPlan = engine.buildTrainingPlan(tenKProfile);
+assert.equal(tenKPlan.validation.errors.length, 0);
+assert.equal(tenKPlan.raceLabel, "10K");
+assert.equal(tenKPlan.goalPacePerKm, "4:30 / km");
+assert.ok(tenKPlan.weeks.some((week) => week.phase === "Speed Build"));
+assert.ok(tenKPlan.summary.peakLongRunKm <= 18);
+assert.ok(tenKPlan.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "10K Pace Repeats"));
+assert.ok(!tenKPlan.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Marathon Pace"));
+const tenKRaceWeek = tenKPlan.weeks.at(-1);
+const tenKRaceSession = tenKRaceWeek.sessions.find((session) => session.sessionType === "Race");
+assert.equal(tenKRaceSession.day, "Wednesday");
+assert.equal(tenKRaceSession.plannedKm, 10);
+assert.ok(tenKPlan.weeks.every((week) => week.sessions.every((session) => Number.isInteger(session.plannedKm))));
+assert.ok(tenKRaceWeek.sessions.slice(3).every((session) => session.sessionType === "Rest"));
+assert.ok(engine.planToTsv(tenKPlan).startsWith("\t10K Training Plan"));
+
+const halfProfile = {
+  ...tenKProfile,
+  raceName: "City Half Marathon",
+  raceDistance: "half_marathon",
+  goalTime: "01:45:00",
+  currentMarathonPace: "05:10",
+};
+const halfPlan = engine.buildTrainingPlan(halfProfile);
+assert.equal(halfPlan.validation.errors.length, 0);
+assert.equal(halfPlan.raceLabel, "Half Marathon");
+assert.equal(halfPlan.goalPacePerKm, "4:59 / km");
+assert.ok(halfPlan.weeks.some((week) => week.phase === "Endurance Build"));
+assert.ok(halfPlan.summary.peakLongRunKm <= 24);
+assert.ok(halfPlan.weeks.flatMap((week) => week.sessions).some((session) => session.sessionType === "Half Marathon Pace"));
+const halfRaceSession = halfPlan.weeks.at(-1).sessions.find((session) => session.sessionType === "Race");
+assert.equal(halfRaceSession.plannedKm, 21);
+assert.ok(halfPlan.weeks.every((week) => week.sessions.every((session) => Number.isInteger(session.plannedKm))));
+assert.ok(engine.planToTsv(halfPlan).startsWith("\tHalf Marathon Training Plan"));
 
 const beginnerProfile = {
   ...profile,

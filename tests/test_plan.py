@@ -77,7 +77,7 @@ def test_long_run_above_hard_safety_cap_is_reduced() -> None:
         for session in week.sessions
         if session.session_type == "Long Run"
     ]
-    assert max(pre_race_long_runs) <= 34.5
+    assert max(pre_race_long_runs) <= 35
     assert any("Max long run capped" in warning for warning in plan.plan_warnings)
 
 
@@ -85,12 +85,17 @@ def test_race_week_uses_actual_race_date_not_long_run_day() -> None:
     plan = build_training_plan(profile())
     race_session = next(session for session in plan.weeks[-1].sessions if session.session_type == "Race")
     assert race_session.day == "Sunday"
-    assert race_session.planned_km == 42.2
-    assert plan.weeks[-1].long_run_summary == "42.2 km race"
+    assert race_session.planned_km == 42
+    assert plan.weeks[-1].long_run_summary == "42 km race"
     assert all(
         session.planned_km > 0
         for session in plan.weeks[-1].sessions
         if session.session_type not in {"Rest", "Strength"}
+    )
+    assert all(
+        float(session.planned_km).is_integer()
+        for week in plan.weeks
+        for session in week.sessions
     )
 
 
@@ -103,9 +108,9 @@ def test_schedule_conflicts_are_rejected() -> None:
 def test_planned_totals_are_reasonable() -> None:
     plan = build_training_plan(profile())
     totals = [week.target_km for week in plan.weeks]
-    assert min(totals) > 40
+    assert min(totals) >= 39
     assert max(totals) <= 92
-    assert totals[-1] >= 42.195
+    assert totals[-1] >= 42
 
 
 def test_advanced_plan_starts_controlled_and_adds_track_sessions() -> None:

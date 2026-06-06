@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -260,9 +261,9 @@ def _long_run_targets(profile: RunnerProfile, weekly_targets: list[float], total
         long_runs.append(_round_distance(target))
 
     if taper_weeks == 3:
-        long_runs.extend([_round_distance(cap * 0.65), _round_distance(cap * 0.45), MARATHON_KM])
+        long_runs.extend([_round_distance(cap * 0.65), _round_distance(cap * 0.45), _round_distance(MARATHON_KM)])
     else:
-        long_runs.extend([_round_distance(cap * 0.50), MARATHON_KM])
+        long_runs.extend([_round_distance(cap * 0.50), _round_distance(MARATHON_KM)])
     return long_runs[:total_weeks]
 
 
@@ -276,8 +277,9 @@ def _effective_long_run_cap(profile: RunnerProfile) -> float:
 
 
 def _round_distance(value: float) -> float:
-    rounded = int(value * 2 + 0.5) / 2
-    return int(rounded) if rounded.is_integer() else rounded
+    if not math.isfinite(value) or value <= 0:
+        return 0
+    return round(value)
 
 
 def _format_km(value: float) -> str:
@@ -328,7 +330,7 @@ def _sessions_for_week(
     medium_km = _medium_long_distance(profile, target_km, race_week)
     easy_budget = max(target_km - long_km - workout_km - medium_km, 0)
     easy_days = [day for day in run_days if day_types[day] == "Easy Run"]
-    easy_km = round(easy_budget / max(len(easy_days), 1), 1)
+    easy_km = _round_distance(easy_budget / max(len(easy_days), 1))
 
     sessions: list[Session] = []
     for day in WEEKDAYS:
@@ -338,13 +340,13 @@ def _sessions_for_week(
         elif session_type == "Strength":
             sessions.append(Session(day, "Strength", _strength_plan(profile), 0))
         elif session_type == "Medium-Long":
-            sessions.append(Session(day, session_type, _medium_long_plan(profile, phase), round(medium_km, 1)))
+            sessions.append(Session(day, session_type, _medium_long_plan(profile, phase), _round_distance(medium_km)))
         elif session_type in {"Long Run", "Race"}:
-            sessions.append(Session(day, session_type, _long_run_plan(profile, phase, week_number, total_weeks, long_km, goal_pace), round(long_km, 1)))
+            sessions.append(Session(day, session_type, _long_run_plan(profile, phase, week_number, total_weeks, long_km, goal_pace), _round_distance(long_km)))
         elif session_type == "Easy Run":
             sessions.append(Session(day, session_type, _easy_plan(week_number), easy_km))
         else:
-            sessions.append(Session(day, session_type, _workout_plan(profile, session_type, phase, goal_pace), round(workout_km, 1)))
+            sessions.append(Session(day, session_type, _workout_plan(profile, session_type, phase, goal_pace), _round_distance(workout_km)))
     return sessions
 
 

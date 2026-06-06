@@ -16,6 +16,7 @@ const transferBox = document.querySelector("#sheets-transfer");
 const defaults = {
   athleteName: "Tai Zhi",
   raceName: "Standard Chartered Kuala Lumpur Marathon 2026",
+  raceDistance: "marathon",
   startDate: "2026-05-11",
   raceDate: "2026-10-04",
   goalHours: "2",
@@ -49,7 +50,7 @@ const chartTooltipSize = {
 };
 
 const stepRequirements = [
-  ["raceName", "startDate", "raceDate"],
+  ["raceName", "raceDistance", "startDate", "raceDate"],
   ["currentWeeklyKm", "longestRecentRunKm", "runsPerWeek", "runningAbility"],
   ["workoutDay", "mediumLongDay", "longRunDay"],
   ["trainingVolume", "difficulty"],
@@ -178,6 +179,7 @@ function collectProfile() {
   return {
     athleteName: clean(data.get("athleteName")),
     raceName: clean(data.get("raceName")),
+    raceDistance: data.get("raceDistance"),
     startDate: data.get("startDate"),
     raceDate: data.get("raceDate"),
     goalTime: composeTime(data.get("goalHours"), data.get("goalMinutes"), data.get("goalSeconds")),
@@ -314,6 +316,7 @@ function renderReview() {
   if (!reviewPanel) return;
   const rows = [
     ["Race", profile.raceName || "Missing"],
+    ["Distance", raceDistanceLabel(profile.raceDistance)],
     ["Dates", profile.startDate && profile.raceDate ? `${profile.startDate} to ${profile.raceDate}` : "Missing"],
     ["Current running", profile.currentWeeklyKm && profile.longestRecentRunKm ? `${profile.currentWeeklyKm} km/week, ${profile.longestRecentRunKm} km long run` : "Missing"],
     ["Schedule", profile.workoutDay && profile.mediumLongDay && profile.longRunDay ? `Workout ${profile.workoutDay}, medium-long ${profile.mediumLongDay}, long run ${profile.longRunDay}` : "Missing"],
@@ -328,6 +331,7 @@ function preferenceLabel(group, value) {
 
 function renderSummary(plan) {
   const items = [
+    ["Race distance", plan.raceLabel || raceDistanceLabel(plan.profile.raceDistance)],
     ["Plan length", `${plan.summary.totalWeeks} weeks`],
     ["Start volume", formatKm(plan.summary.startKm)],
     ["Peak volume", formatKm(plan.summary.peakKm)],
@@ -615,7 +619,7 @@ function downloadCsv() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "marathon-training-plan.csv";
+  link.download = `${fileSlug(state.plan.raceLabel || "race")}-training-plan.csv`;
   document.body.append(link);
   link.click();
   link.remove();
@@ -627,6 +631,19 @@ function setStatus(message, type) {
   statusBox.textContent = message;
   statusBox.dataset.type = type;
   statusBox.hidden = false;
+}
+
+function raceDistanceLabel(value) {
+  const labels = {
+    "10k": "10K",
+    half_marathon: "Half marathon",
+    marathon: "Marathon",
+  };
+  return labels[value] || "Missing";
+}
+
+function fileSlug(value) {
+  return String(value || "race").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "race";
 }
 
 init();

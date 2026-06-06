@@ -1,6 +1,6 @@
-# AI Marathon Plan Generator
+# AI Race Plan Generator
 
-An early-stage marathon training program generator inspired by high-quality running apps such as Runna.
+An early-stage 10K, half marathon, and marathon training program generator inspired by high-quality running apps such as Runna.
 
 The product goal is simple:
 
@@ -14,8 +14,8 @@ The product goal is simple:
 - Guided intake form with required and optional fields.
 - In-browser plan preview and export to Google Sheets via copyable TSV.
 - CSV download fallback.
-- Research-backed intake schema for marathon plan generation.
-- Deterministic training-plan engine for weekly mileage, workout types, deloads, taper, long runs, and strength slots.
+- Research-backed intake schema for 10K, half marathon, and marathon plan generation.
+- Deterministic training-plan engine for weekly mileage, workout types, deloads, taper, long runs, and strength slots across all supported race distances.
 - Google Sheets-ready `.xlsx` exporter matching the provided workbook structure:
   - top briefing area
   - weekly blocks
@@ -43,7 +43,7 @@ src/marathon_generator/
   export_google_sheet.py   XLSX export shaped for native Google Sheets import
 scripts/
   generate_sample.py       Builds an example workbook
-  smoke-test-web.js        Browser-engine smoke test
+  smoke-test-web.js        Browser-engine smoke test covering 10K, half marathon, and marathon
 tests/
   test_plan.py             Safety and structure checks
 ```

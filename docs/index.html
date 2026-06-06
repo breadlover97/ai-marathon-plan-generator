@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Marathon Plan Generator</title>
-    <link rel="stylesheet" href="styles.css?v=20260603-1" />
+    <title>Race Plan Generator</title>
+    <link rel="stylesheet" href="styles.css?v=20260606-2" />
   </head>
   <body>
     <main class="app-shell">
       <aside class="sidebar" aria-label="Intake sections">
         <div class="brand">
-          <h1>Marathon Plan Generator</h1>
-          <p>Build a structured marathon plan and export it to Google Sheets.</p>
+          <h1>Race Plan Generator</h1>
+          <p>Build a structured 10K, half marathon, or marathon plan and export it to Google Sheets.</p>
         </div>
         <nav class="step-nav">
           <button type="button" data-step-target="0">Race</button>
@@ -41,6 +41,16 @@
                 <span class="field-title">Race name <span class="field-tag required">Required</span></span>
                 <input name="raceName" required placeholder="e.g. Kuala Lumpur Marathon" />
                 <span class="hint">Required. This appears at the top of the plan.</span>
+              </label>
+              <label>
+                <span class="field-title">Race distance <span class="field-tag required">Required</span></span>
+                <select name="raceDistance" required>
+                  <option value="" selected>Choose race distance</option>
+                  <option value="10k">10K</option>
+                  <option value="half_marathon">Half marathon</option>
+                  <option value="marathon">Marathon</option>
+                </select>
+                <span class="hint">Required. Sets race pace, long-run caps, workouts, and taper.</span>
               </label>
               <label>
                 <span class="field-title">Plan start date <span class="field-tag required">Required</span></span>
@@ -89,7 +99,7 @@
                 <span class="hint">Required. Helps set a safe long-run progression.</span>
               </label>
               <fieldset class="time-field">
-                <legend>Current marathon pace <span class="field-tag optional">Optional</span></legend>
+                <legend>Current race pace <span class="field-tag optional">Optional</span></legend>
                 <div class="time-grid compact">
                   <label>Minutes<input name="paceMinutes" type="number" min="0" max="30" inputmode="numeric" placeholder="5" /></label>
                   <label>Seconds<input name="paceSeconds" type="number" min="0" max="59" inputmode="numeric" placeholder="20" /></label>
@@ -122,7 +132,7 @@
               </label>
               <label>
                 <span class="field-title">Max long run, km <span class="field-tag optional">Optional</span></span>
-                <input name="maxLongRunKm" type="number" min="10" step="0.5" placeholder="e.g. 32" />
+                <input name="maxLongRunKm" type="number" min="10" step="1" placeholder="e.g. 32" />
                 <span class="hint">Optional. Leave blank to let the engine choose a cap.</span>
               </label>
             </div>
@@ -221,7 +231,7 @@
                 <span class="option-guide" aria-label="Difficulty guide">
                   <span><strong>Comfortable</strong> Lighter workouts, easier long runs, best when recovery is tight.</span>
                   <span><strong>Balanced</strong> Standard workouts with controlled long-run progression.</span>
-                  <span><strong>Challenging</strong> More demanding workouts and more marathon-effort work.</span>
+                  <span><strong>Challenging</strong> More demanding workouts and more race-specific work.</span>
                 </span>
               </label>
               <label class="wide">
@@ -321,7 +331,7 @@
         </section>
       </section>
     </main>
-    <script src="engine.js?v=20260603-3"></script>
-    <script src="app.js?v=20260603-1"></script>
+    <script src="engine.js?v=20260606-2"></script>
+    <script src="app.js?v=20260606-2"></script>
   </body>
 </html>
